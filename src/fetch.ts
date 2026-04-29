@@ -35,7 +35,7 @@ function remap(items: PreItem[]): Item[] {
   }))
 }
 
-type ProgressCtx = {
+interface ProgressCtx {
   setProcessing: (arg: { current: number; total: number }) => void
 }
 

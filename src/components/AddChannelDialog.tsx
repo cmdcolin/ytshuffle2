@@ -27,7 +27,7 @@ export default function AddChannelDialog({
   onClose,
 }: {
   open: boolean
-  onClose: (results?: Array<{ name: string; url: string }>) => void
+  onClose: (results?: { name: string; url: string }[]) => void
 }) {
   const [text, setText] = useState('')
 

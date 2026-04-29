@@ -1,4 +1,6 @@
 import { Suspense, lazy, useState } from 'react'
+
+import localforage from 'localforage'
 import { FaBars, FaEllipsisVertical } from 'react-icons/fa6'
 
 import logo from '../favicon.svg'
@@ -6,7 +8,6 @@ import { signOut } from '../firebase'
 import AuthButton from './AuthButton'
 import Button from './Button'
 import styles from './Header.module.css'
-import localforage from 'localforage'
 
 import type { StoreModel } from '../store'
 
@@ -83,9 +84,14 @@ export default function Header({
                 </Button>
                 <Button
                   onClick={() => {
-                    void localforage.clear().then(() => {
-                      globalThis.location.reload()
-                    })
+                    void (async () => {
+                      try {
+                        await localforage.clear()
+                        globalThis.location.reload()
+                      } catch (error: unknown) {
+                        console.error('clear cache failed', error)
+                      }
+                    })()
                   }}
                 >
                   Clear local cache
@@ -93,8 +99,15 @@ export default function Header({
                 {model.uid ? (
                   <Button
                     onClick={() => {
-                      void signOut()
-                      setMenuOpen(false)
+                      void (async () => {
+                        try {
+                          await signOut()
+                        } catch (error: unknown) {
+                          console.error('signOut failed', error)
+                          model.setError('Failed to sign out.')
+                        }
+                        setMenuOpen(false)
+                      })()
                     }}
                   >
                     Sign out

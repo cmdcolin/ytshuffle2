@@ -6,8 +6,8 @@ import { FaChevronDown, FaChevronUp } from 'react-icons/fa6'
 
 import styles from './LibraryTable.module.css'
 
-import type { Item } from '../util'
 import type { StoreModel } from '../store'
+import type { Item } from '../util'
 
 type SortKey = 'title' | 'channel' | 'publishedAt' | 'plays'
 type SortDir = 'asc' | 'desc'

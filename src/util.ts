@@ -12,7 +12,6 @@ export async function myfetch<T>(url: string, rest?: RequestInit) {
 
 // xref https://stackoverflow.com/a/9102270/2129219
 export function getVideoId(url: string) {
-  const match1 = /^.*?list=(.*?)(?:&|$)/.exec(url)
   if (
     url.startsWith('https://www.youtube.com/@') ||
     url.startsWith('https://youtube.com/@')
@@ -20,14 +19,17 @@ export function getVideoId(url: string) {
     const handle = url
       .replace(/^https:\/\/(www\.)?youtube\.com\/@/, '')
       .split('?')[0]
-    return { handle }
-  } else if (match1) {
-    return { playlistId: match1[1] }
-  } else {
-    const match2 =
-      /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url)
-    return match2?.[2].length === 11 ? { videoId: match2[2] } : undefined
+    return handle !== undefined ? { handle } : undefined
   }
+  const match1 = /^.*?list=(.*?)(?:&|$)/.exec(url)
+  if (match1) {
+    const playlistId = match1[1]
+    return playlistId !== undefined ? { playlistId } : undefined
+  }
+  const match2 =
+    /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url)
+  const videoId = match2?.[2]
+  return videoId !== undefined && videoId.length === 11 ? { videoId } : undefined
 }
 
 export type QueryItem =
@@ -65,7 +67,7 @@ export function parsePlaylists(raw: unknown): Record<string, PlaylistConfig> {
     Object.entries(raw as Record<string, unknown>).flatMap(
       ([key, val]): [string, PlaylistConfig][] => {
         if (Array.isArray(val) && val.every(item => typeof item === 'string')) {
-          return [[key, { channels: val as string[] }]]
+          return [[key, { channels: val }]]
         }
         if (
           val &&
@@ -73,12 +75,12 @@ export function parsePlaylists(raw: unknown): Record<string, PlaylistConfig> {
           !Array.isArray(val) &&
           'channels' in val
         ) {
-          const channels = (val as Record<string, unknown>)['channels']
+          const channels = (val as Record<string, unknown>).channels
           if (
             Array.isArray(channels) &&
             channels.every(item => typeof item === 'string')
           ) {
-            return [[key, { channels: channels as string[] }]]
+            return [[key, { channels: channels }]]
           }
         }
         return []

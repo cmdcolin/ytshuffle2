@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState } from 'react'
+
 import { observer } from 'mobx-react-lite'
 
 import styles from './Sidebar.module.css'
@@ -91,7 +92,7 @@ const Sidebar = observer(function ({
     setEditModal(null)
   }
 
-  const handleAddChannel = (results?: Array<{ name: string; url: string }>) => {
+  const handleAddChannel = (results?: { name: string; url: string }[]) => {
     if (results) {
       for (const { name, url } of results) {
         model.addChannel(name, url)
@@ -124,7 +125,14 @@ const Sidebar = observer(function ({
             <button
               className={styles.itemAction}
               onClick={() => {
-                void model.refreshChannel(name)
+                void (async () => {
+                  try {
+                    await model.refreshChannel(name)
+                  } catch (error: unknown) {
+                    console.error('refreshChannel failed', error)
+                    model.setError(`Failed to refresh "${name}".`)
+                  }
+                })()
               }}
               title="Refresh"
             >
@@ -166,10 +174,10 @@ const Sidebar = observer(function ({
         <button
           className={styles.itemAction}
           onClick={() => {
-            setEditModal({
-              originalName: name,
-              channels: playlists[name]?.channels ?? [],
-            })
+            const config = playlists[name]
+            if (config) {
+              setEditModal({ originalName: name, channels: config.channels })
+            }
           }}
           title="Edit"
         >
@@ -229,7 +237,7 @@ const Sidebar = observer(function ({
         renderItem={renderPlaylistItem}
       />
 
-      {editModal !== null ? (
+      {editModal === null ? null : (
         <Suspense fallback={null}>
           <EditPlaylistDialog
             open
@@ -239,7 +247,7 @@ const Sidebar = observer(function ({
             onClose={handleSavePlaylist}
           />
         </Suspense>
-      ) : null}
+      )}
 
       {showAddChannel ? (
         <Suspense fallback={null}>

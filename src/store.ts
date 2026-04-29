@@ -34,14 +34,17 @@ class Store {
   authLoading = true
 
   private fetchRevision = 0
-  private disposers: Array<() => void> = []
+  private disposers: (() => void)[] = []
 
   constructor({ playlist }: { playlist: string }) {
     this.channels = JSON.parse(localStorage.getItem('channels') ?? '{}')
     this.playlists = parsePlaylists(
       JSON.parse(localStorage.getItem('playlists') ?? '{}'),
     )
-    this.selectedChannelNames = this.playlists[playlist]?.channels ?? []
+    const firstKey = Object.keys(this.playlists)[0]
+    this.selectedChannelNames =
+      (this.playlists[playlist] ?? this.playlists[firstKey ?? ''])?.channels ??
+      []
     this.applyUrlParams()
     makeAutoObservable(this, {
       videoMap: false,
@@ -91,12 +94,23 @@ class Store {
     if (arg !== undefined) {
       this.playCounts.set(arg, (this.playCounts.get(arg) ?? 0) + 1)
       if (this.uid) {
-        void incrementPlayCount(this.uid, arg)
+        void this.trackPlayCount(this.uid, arg)
       }
     }
   }
+
+  private async trackPlayCount(uid: string, videoId: string) {
+    try {
+      await incrementPlayCount(uid, videoId)
+    } catch (error: unknown) {
+      console.error('incrementPlayCount failed', error)
+    }
+  }
   setPlaylist(arg: string) {
-    this.selectedChannelNames = this.playlists[arg]?.channels ?? []
+    const config = this.playlists[arg]
+    if (config) {
+      this.selectedChannelNames = config.channels
+    }
   }
   selectChannel(name: string) {
     this.selectedChannelNames = [name]
@@ -125,6 +139,9 @@ class Store {
     this.photoURL = user?.photoURL ?? null
     this.authLoading = false
   }
+  setError(msg: string | undefined) {
+    this.error = msg
+  }
   applyCloudPlayCounts(counts: Record<string, number>) {
     for (const [id, count] of Object.entries(counts)) {
       this.playCounts.set(id, count)
@@ -144,7 +161,7 @@ class Store {
     this.channelProgress.delete(name)
   }
   pruneVideoMap(activeKeys: Set<string>) {
-    for (const key of [...this.videoMap.keys()]) {
+    for (const key of this.videoMap.keys()) {
       if (!activeKeys.has(key)) {
         this.videoMap.delete(key)
       }
@@ -162,8 +179,9 @@ class Store {
     this.playlists = cloudData.playlists
     if (!this.activePlaylistName) {
       const firstPlaylist = Object.keys(cloudData.playlists)[0]
-      if (firstPlaylist) {
-        this.selectedChannelNames = cloudData.playlists[firstPlaylist].channels
+      const firstConfig = firstPlaylist ? cloudData.playlists[firstPlaylist] : undefined
+      if (firstConfig) {
+        this.selectedChannelNames = firstConfig.channels
       }
     }
     for (const name of Object.keys(this.pendingUrlChannels)) {
@@ -173,12 +191,17 @@ class Store {
     }
   }
 
-  private persist() {
+  private async persist() {
     if (this.uid) {
-      void saveUserData(this.uid, {
-        channels: this.channels,
-        playlists: this.playlists,
-      })
+      try {
+        await saveUserData(this.uid, {
+          channels: this.channels,
+          playlists: this.playlists,
+        })
+      } catch (error: unknown) {
+        console.error('saveUserData failed', error)
+        this.setError('Failed to save your library. Check your connection.')
+      }
     } else {
       localStorage.setItem('channels', JSON.stringify(this.channels))
       localStorage.setItem('playlists', JSON.stringify(this.playlists))
@@ -200,7 +223,7 @@ class Store {
 
   addChannel(name: string, url: string) {
     this.channels = { ...this.channels, [name]: url }
-    this.persist()
+    void this.persist()
   }
 
   removeChannel(name: string) {
@@ -215,7 +238,7 @@ class Store {
     this.selectedChannelNames = this.selectedChannelNames.filter(
       c => c !== name,
     )
-    this.persist()
+    void this.persist()
   }
 
   savePlaylist(originalName: string, newName: string, channelNames: string[]) {
@@ -226,7 +249,7 @@ class Store {
     if (wasActive) {
       this.selectedChannelNames = channelNames
     }
-    this.persist()
+    void this.persist()
   }
 
   deletePlaylist(name: string) {
@@ -241,7 +264,7 @@ class Store {
         this.selectedChannelNames = []
       }
     }
-    this.persist()
+    void this.persist()
   }
 
   get videoFlat() {
@@ -307,7 +330,7 @@ class Store {
   acceptPendingUrlChannels() {
     this.channels = { ...this.channels, ...this.pendingUrlChannels }
     this.pendingUrlChannels = {}
-    this.persist()
+    void this.persist()
   }
 
   dismissPendingUrlChannels() {
@@ -318,40 +341,51 @@ class Store {
     this.pendingUrlChannels = {}
   }
 
+  private async handleAuthChange(
+    user: {
+      uid: string
+      displayName: string | null
+      photoURL: string | null
+    } | null,
+  ) {
+    const wasSignedIn = this.uid !== null
+    this.applyAuthState(user)
+    if (user) {
+      try {
+        const [cloudData, counts] = await Promise.all([
+          loadUserData(user.uid),
+          loadPlayCounts(user.uid),
+        ])
+        runInAction(() => {
+          if (cloudData) {
+            this.adoptCloudData(cloudData)
+          } else {
+            void this.persist()
+          }
+          this.applyCloudPlayCounts(counts)
+        })
+      } catch (error: unknown) {
+        console.error('loadUserData failed', error)
+        this.setError('Failed to load your library from cloud.')
+      }
+    } else if (wasSignedIn) {
+      this.playCounts.clear()
+      void this.persist()
+    }
+  }
+
   private init() {
     this.disposers.push(
       subscribeToAuthChanges(user => {
-        const wasSignedIn = this.uid !== null
-        this.applyAuthState(user)
-        if (user) {
-          void Promise.all([
-            loadUserData(user.uid),
-            loadPlayCounts(user.uid),
-          ]).then(([cloudData, counts]) => {
-            runInAction(() => {
-              if (cloudData) {
-                this.adoptCloudData(cloudData)
-              } else {
-                void saveUserData(user.uid, {
-                  channels: this.channels,
-                  playlists: this.playlists,
-                })
-              }
-              this.applyCloudPlayCounts(counts)
-            })
-          })
-        } else if (wasSignedIn) {
-          this.playCounts.clear()
-          this.persist()
-        }
+        void this.handleAuthChange(user)
       }),
     )
 
     let controller = new AbortController()
-    this.disposers.push(() => {
-      controller.abort()
-    })
     this.disposers.push(
+      () => {
+        controller.abort()
+      },
       autorun(async () => {
         void this.fetchRevision
         controller.abort()
@@ -398,17 +432,11 @@ class Store {
           })
         }
       }),
-    )
-
-    this.disposers.push(
       autorun(() => {
         const url = new URL(globalThis.location.href)
         applyQueryToUrl(url, this.query, this.activePlaylistName ?? '')
         globalThis.history.replaceState({}, '', url)
       }),
-    )
-
-    this.disposers.push(
       autorun(() => {
         if (this.follow && this.playing) {
           document

@@ -15,9 +15,10 @@ import {
   setDoc,
 } from 'firebase/firestore/lite'
 
-import type { User } from 'firebase/auth'
 import { parsePlaylists } from './util'
+
 import type { PlaylistConfig } from './util'
+import type { User } from 'firebase/auth'
 
 const app = initializeApp({
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -56,8 +57,8 @@ const userConverter = {
   fromFirestore(snap: QueryDocumentSnapshot): UserDoc {
     const raw = snap.data()
     return {
-      channels: parseStringRecord(raw['channels']),
-      playlists: parsePlaylists(raw['playlists']),
+      channels: parseStringRecord(raw.channels),
+      playlists: parsePlaylists(raw.playlists),
     }
   },
 }

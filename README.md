@@ -26,3 +26,5 @@ pnpm run deploy
 ## Notes
 
 See old version at https://cmdcolin.github.io/ytshuffle for localstorage only
+
+Not affiliated with https://ytshuffle.com/
