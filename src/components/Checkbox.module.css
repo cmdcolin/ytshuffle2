@@ -1,0 +1,11 @@
+.row {
+  margin-bottom: 4px;
+}
+
+.label {
+  cursor: pointer;
+}
+
+.input {
+  margin-right: 4px;
+}

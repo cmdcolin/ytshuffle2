@@ -1,0 +1,187 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid light-dark(#ddd, #333);
+  margin-right: 16px;
+  overflow-y: auto;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 8px;
+}
+
+.sidebarTitle {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: light-dark(#666, #999);
+}
+
+.sidebarNewInline {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: light-dark(#666, #999);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.sidebarNewInline:hover {
+  color: inherit;
+  background: none;
+}
+
+.headerActions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.sidebarCloseMobile {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: light-dark(#666, #999);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.sidebarCloseMobile:hover {
+  color: inherit;
+  background: none;
+}
+
+.progressBar {
+  height: 3px;
+  background: light-dark(#e0e0e0, #333);
+  margin: 0 8px 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: light-dark(#4488ff, #6699ff);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progressIndeterminate {
+  height: 100%;
+  width: 40%;
+  background: light-dark(#4488ff, #6699ff);
+  border-radius: 2px;
+  animation: progressSlide 1.4s ease-in-out infinite;
+}
+
+@keyframes progressSlide {
+  0% {
+    transform: translateX(-150%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.sectionDivider {
+  height: 1px;
+  background: light-dark(#ddd, #333);
+  margin: 4px 0;
+  flex-shrink: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  border-radius: 4px;
+  margin: 1px 4px;
+}
+
+.item:hover {
+  background: light-dark(#f0f0f0, #2a2a2a);
+}
+
+.itemActive {
+  background: light-dark(#e8eeff, #1e2e4a);
+}
+
+.itemActive:hover {
+  background: light-dark(#dce6ff, #253757);
+}
+
+.itemName {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 14px;
+  padding: 8px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.itemName:hover {
+  background: none;
+}
+
+.itemActions {
+  display: none;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.item:hover .itemActions {
+  display: flex;
+}
+
+.itemAction {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.5;
+  font-size: 12px;
+  padding: 2px 3px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.itemAction:hover {
+  opacity: 1;
+  background: light-dark(#ddd, #555);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    width: 100%;
+    background: Canvas;
+    overflow-y: auto;
+  }
+
+  .sidebarOpen {
+    display: flex;
+  }
+
+  .sidebarCloseMobile {
+    display: inline-flex;
+  }
+}

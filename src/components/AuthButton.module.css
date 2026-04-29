@@ -1,0 +1,12 @@
+.authAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  object-fit: cover;
+  opacity: 0.85;
+}
+
+.authAvatar:hover {
+  opacity: 1;
+}

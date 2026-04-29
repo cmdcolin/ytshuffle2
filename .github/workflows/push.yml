@@ -1,0 +1,30 @@
+name: Push
+
+on: push
+
+jobs:
+  spellcheck:
+    name: Spell check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check spelling
+        uses: crate-ci/typos@master
+  test:
+    name: Lint, build, and test on node 24.x and ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+      - name: Install deps (with cache)
+        uses: bahmutov/npm-install@v1
+      - name: Lint codebase
+        run: yarn lint
+      - name: Test
+        run: yarn test
+      - name: Build codebase
+        run: yarn build

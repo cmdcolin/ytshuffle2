@@ -1,0 +1,14 @@
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dialogHeader img {
+  height: 40px;
+}
+
+.dialogHeader h2 {
+  margin: 0;
+}

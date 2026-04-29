@@ -1,0 +1,44 @@
+.libraryScroll {
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: none;
+}
+
+.libraryStatus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: light-dark(#888, #777);
+}
+
+.libraryRow {
+  cursor: pointer;
+}
+
+.errorBox {
+  margin: 16px;
+  padding: 10px 14px;
+  background: light-dark(#fff5f5, #2a1515);
+  border: 1px solid light-dark(#f5c6c6, #5a2020);
+  border-radius: 6px;
+  color: light-dark(#991b1b, #f8a0a0);
+  font-size: 13px;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid light-dark(#ddd, #444);
+  border-top-color: light-dark(#4488ff, #6699ff);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

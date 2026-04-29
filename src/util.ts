@@ -1,0 +1,135 @@
+import { useEffect, useRef } from 'react'
+
+export async function myfetch<T>(url: string, rest?: RequestInit) {
+  const response = await fetch(url, rest)
+  if (!response.ok) {
+    const endpoint = new URL(url).pathname.split('/').pop() ?? url
+    const body = await response.text()
+    throw new Error(`HTTP ${response.status} from ${endpoint}: ${body}`)
+  }
+  return response.json() as T
+}
+
+// xref https://stackoverflow.com/a/9102270/2129219
+export function getVideoId(url: string) {
+  const match1 = /^.*?list=(.*?)(?:&|$)/.exec(url)
+  if (
+    url.startsWith('https://www.youtube.com/@') ||
+    url.startsWith('https://youtube.com/@')
+  ) {
+    const handle = url
+      .replace(/^https:\/\/(www\.)?youtube\.com\/@/, '')
+      .split('?')[0]
+    return { handle }
+  } else if (match1) {
+    return { playlistId: match1[1] }
+  } else {
+    const match2 =
+      /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url)
+    return match2?.[2].length === 11 ? { videoId: match2[2] } : undefined
+  }
+}
+
+export type QueryItem =
+  | { videoId: string }
+  | { playlistId: string }
+  | { handle: string }
+
+export function getIds(text: string): QueryItem[] {
+  return text.split('\n').flatMap(line => {
+    const item = getVideoId(line.trim())
+    return item ? [item] : []
+  })
+}
+
+export interface Item {
+  id: string
+  channel?: string
+  videoId: string
+  title?: string
+  publishedAt: string
+  thumbnail?: string
+}
+
+export type Playlist = Item[]
+
+export interface PlaylistConfig {
+  channels: string[]
+}
+
+export function parsePlaylists(raw: unknown): Record<string, PlaylistConfig> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>).flatMap(
+      ([key, val]): [string, PlaylistConfig][] => {
+        if (Array.isArray(val) && val.every(item => typeof item === 'string')) {
+          return [[key, { channels: val as string[] }]]
+        }
+        if (
+          val &&
+          typeof val === 'object' &&
+          !Array.isArray(val) &&
+          'channels' in val
+        ) {
+          const channels = (val as Record<string, unknown>)['channels']
+          if (
+            Array.isArray(channels) &&
+            channels.every(item => typeof item === 'string')
+          ) {
+            return [[key, { channels: channels as string[] }]]
+          }
+        }
+        return []
+      },
+    ),
+  )
+}
+
+export function clamp(p: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, p))
+}
+
+export function applyQueryToUrl(url: URL, query: string, playlist: string) {
+  const items = getIds(query)
+  const setParam = (key: string, values: string[]) => {
+    if (values.length > 0) {
+      url.searchParams.set(key, values.join(','))
+    } else {
+      url.searchParams.delete(key)
+    }
+  }
+  setParam(
+    'ids',
+    items.flatMap(f => ('videoId' in f ? [f.videoId] : [])),
+  )
+  setParam(
+    'pids',
+    items.flatMap(f => ('playlistId' in f ? [f.playlistId] : [])),
+  )
+  setParam(
+    'handles',
+    items.flatMap(f => ('handle' in f ? [f.handle] : [])),
+  )
+  if (playlist) {
+    url.searchParams.set('playlist', playlist)
+  } else {
+    url.searchParams.delete('playlist')
+  }
+}
+
+export function useDialogShown(open: boolean) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (!ref.current) {
+      return
+    }
+    if (open && !ref.current.open) {
+      ref.current.showModal()
+    } else if (!open && ref.current.open) {
+      ref.current.close()
+    }
+  }, [open])
+  return ref
+}
