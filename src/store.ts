@@ -9,7 +9,7 @@ import {
   saveUserData,
   subscribeToAuthChanges,
 } from './firebase'
-import { applyQueryToUrl, clamp, getVideoId, parsePlaylists } from './util'
+import { applyQueryToUrl, clamp, getVideoId, parseChannels } from './util'
 
 import type { Playlist, PlaylistConfig } from './util'
 
@@ -18,7 +18,7 @@ class Store {
   shuffle = true
   follow = true
   autoplay = true
-  selectedChannelNames: string[] = []
+  activePlaylistName: string | null = null
   playing: string | undefined = undefined
   playlists: Record<string, PlaylistConfig>
   channels: Record<string, string>
@@ -33,18 +33,14 @@ class Store {
   photoURL: string | null = null
   authLoading = true
 
+  private readonly initialPlaylist: string
   private fetchRevision = 0
   private disposers: (() => void)[] = []
 
   constructor({ playlist }: { playlist: string }) {
-    this.channels = JSON.parse(localStorage.getItem('channels') ?? '{}')
-    this.playlists = parsePlaylists(
-      JSON.parse(localStorage.getItem('playlists') ?? '{}'),
-    )
-    const firstKey = Object.keys(this.playlists)[0]
-    this.selectedChannelNames =
-      (this.playlists[playlist] ?? this.playlists[firstKey ?? ''])?.channels ??
-      []
+    this.initialPlaylist = playlist
+    this.channels = parseChannels(JSON.parse(localStorage.getItem('channels') ?? '{}'))
+    this.playlists = {}
     this.applyUrlParams()
     makeAutoObservable(this, {
       videoMap: false,
@@ -78,15 +74,15 @@ class Store {
     return this.playlistItems.map(p => p.url).join('\n')
   }
 
-  get activePlaylistName() {
-    const selected = new Set(this.selectedChannelNames)
-    return (
-      Object.entries(this.playlists).find(
-        ([_, config]) =>
-          config.channels.length === selected.size &&
-          config.channels.every(c => selected.has(c)),
-      )?.[0] ?? null
+  get selectedChannelNames() {
+    const config = this.activePlaylistName
+      ? this.playlists[this.activePlaylistName]
+      : undefined
+    const base = config?.channels ?? Object.keys(this.channels)
+    const extraPending = Object.keys(this.pendingUrlChannels).filter(
+      n => !this.channels[n],
     )
+    return extraPending.length ? [...base, ...extraPending] : base
   }
 
   setPlaying(arg?: string) {
@@ -107,13 +103,7 @@ class Store {
     }
   }
   setPlaylist(arg: string) {
-    const config = this.playlists[arg]
-    if (config) {
-      this.selectedChannelNames = config.channels
-    }
-  }
-  selectChannel(name: string) {
-    this.selectedChannelNames = [name]
+    this.activePlaylistName = arg
   }
   setFilter(arg: string) {
     this.filter = arg
@@ -177,18 +167,10 @@ class Store {
   }) {
     this.channels = cloudData.channels
     this.playlists = cloudData.playlists
-    if (!this.activePlaylistName) {
-      const firstPlaylist = Object.keys(cloudData.playlists)[0]
-      const firstConfig = firstPlaylist ? cloudData.playlists[firstPlaylist] : undefined
-      if (firstConfig) {
-        this.selectedChannelNames = firstConfig.channels
-      }
-    }
-    for (const name of Object.keys(this.pendingUrlChannels)) {
-      if (!this.selectedChannelNames.includes(name)) {
-        this.selectedChannelNames = [...this.selectedChannelNames, name]
-      }
-    }
+    const firstKey = Object.keys(cloudData.playlists)[0]
+    this.activePlaylistName = cloudData.playlists[this.initialPlaylist]
+      ? this.initialPlaylist
+      : (firstKey ?? null)
   }
 
   private async persist() {
@@ -204,7 +186,6 @@ class Store {
       }
     } else {
       localStorage.setItem('channels', JSON.stringify(this.channels))
-      localStorage.setItem('playlists', JSON.stringify(this.playlists))
     }
   }
   async refreshChannel(channelName: string) {
@@ -235,34 +216,23 @@ class Store {
         { ...config, channels: config.channels.filter(c => c !== name) },
       ]),
     )
-    this.selectedChannelNames = this.selectedChannelNames.filter(
-      c => c !== name,
-    )
     void this.persist()
   }
 
   savePlaylist(originalName: string, newName: string, channelNames: string[]) {
-    const wasActive =
-      originalName === '' || originalName === this.activePlaylistName
     const { [originalName]: _old, ...rest } = this.playlists
     this.playlists = { ...rest, [newName]: { channels: channelNames } }
-    if (wasActive) {
-      this.selectedChannelNames = channelNames
+    if (originalName === '' || originalName === this.activePlaylistName) {
+      this.activePlaylistName = newName
     }
     void this.persist()
   }
 
   deletePlaylist(name: string) {
-    const wasActive = name === this.activePlaylistName
     const { [name]: _removed, ...rest } = this.playlists
     this.playlists = rest
-    if (wasActive) {
-      const first = Object.keys(rest)[0]
-      if (first) {
-        this.setPlaylist(first)
-      } else {
-        this.selectedChannelNames = []
-      }
+    if (name === this.activePlaylistName) {
+      this.activePlaylistName = Object.keys(rest)[0] ?? null
     }
     void this.persist()
   }
@@ -320,9 +290,6 @@ class Store {
         if (!this.channels[name]) {
           this.pendingUrlChannels[name] = toUrl(name)
         }
-        if (!this.selectedChannelNames.includes(name)) {
-          this.selectedChannelNames.push(name)
-        }
       }
     }
   }
@@ -334,10 +301,6 @@ class Store {
   }
 
   dismissPendingUrlChannels() {
-    const pending = new Set(Object.keys(this.pendingUrlChannels))
-    this.selectedChannelNames = this.selectedChannelNames.filter(
-      n => !pending.has(n),
-    )
     this.pendingUrlChannels = {}
   }
 
@@ -370,6 +333,8 @@ class Store {
       }
     } else if (wasSignedIn) {
       this.playCounts.clear()
+      this.playlists = {}
+      this.activePlaylistName = null
       void this.persist()
     }
   }

@@ -103,24 +103,12 @@ const Sidebar = observer(function ({
 
   const renderChannelItem = (name: string) => {
     const progress = model.channelProgress.get(name)
-    const isActive =
-      model.activePlaylistName === null &&
-      model.selectedChannelNames.includes(name)
     return (
       <>
-        <div
-          className={`${styles.item}${isActive ? ` ${styles.itemActive}` : ''}`}
-        >
-          <button
-            className={styles.itemName}
-            onClick={() => {
-              model.selectChannel(name)
-              onClose()
-            }}
-            title={name}
-          >
+        <div className={styles.item}>
+          <span className={styles.itemName} title={name}>
             {name}
-          </button>
+          </span>
           <div className={styles.itemActions}>
             <button
               className={styles.itemAction}
@@ -228,25 +216,29 @@ const Sidebar = observer(function ({
       </div>
       <div className={styles.sectionDivider} />
 
-      <SidebarSection
-        title="Playlists"
-        onNew={() => {
-          setEditModal({ originalName: '', channels: [] })
-        }}
-        items={Object.keys(playlists)}
-        renderItem={renderPlaylistItem}
-      />
-
-      {editModal === null ? null : (
-        <Suspense fallback={null}>
-          <EditPlaylistDialog
-            open
-            initialName={editModal.originalName}
-            initialChannels={editModal.channels}
-            availableChannels={channelNames}
-            onClose={handleSavePlaylist}
+      {model.uid && (
+        <>
+          <SidebarSection
+            title="Playlists"
+            onNew={() => {
+              setEditModal({ originalName: '', channels: [] })
+            }}
+            items={Object.keys(playlists)}
+            renderItem={renderPlaylistItem}
           />
-        </Suspense>
+
+          {editModal === null ? null : (
+            <Suspense fallback={null}>
+              <EditPlaylistDialog
+                open
+                initialName={editModal.originalName}
+                initialChannels={editModal.channels}
+                availableChannels={channelNames}
+                onClose={handleSavePlaylist}
+              />
+            </Suspense>
+          )}
+        </>
       )}
 
       {showAddChannel ? (

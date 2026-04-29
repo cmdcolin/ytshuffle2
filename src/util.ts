@@ -59,6 +59,17 @@ export interface PlaylistConfig {
   channels: string[]
 }
 
+export function parseChannels(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>).filter(
+      (e): e is [string, string] => typeof e[1] === 'string',
+    ),
+  )
+}
+
 export function parsePlaylists(raw: unknown): Record<string, PlaylistConfig> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return {}

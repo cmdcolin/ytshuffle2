@@ -15,7 +15,7 @@ import {
   setDoc,
 } from 'firebase/firestore/lite'
 
-import { parsePlaylists } from './util'
+import { parseChannels, parsePlaylists } from './util'
 
 import type { PlaylistConfig } from './util'
 import type { User } from 'firebase/auth'
@@ -39,17 +39,6 @@ interface UserDoc {
   channels: Record<string, string>
 }
 
-function parseStringRecord(raw: unknown): Record<string, string> {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return {}
-  }
-  return Object.fromEntries(
-    Object.entries(raw).filter(
-      (e): e is [string, string] => typeof e[1] === 'string',
-    ),
-  )
-}
-
 const userConverter = {
   toFirestore(data: UserDoc): DocumentData {
     return data
@@ -57,7 +46,7 @@ const userConverter = {
   fromFirestore(snap: QueryDocumentSnapshot): UserDoc {
     const raw = snap.data()
     return {
-      channels: parseStringRecord(raw.channels),
+      channels: parseChannels(raw.channels),
       playlists: parsePlaylists(raw.playlists),
     }
   },
