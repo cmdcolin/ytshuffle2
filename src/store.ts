@@ -1,5 +1,5 @@
 import localforage from 'localforage'
-import { autorun, makeAutoObservable, observable, runInAction } from 'mobx'
+import { autorun, makeAutoObservable, observable, runInAction, untracked } from 'mobx'
 
 import { getCachedOrFetch, getItemKey } from './fetch'
 import {
@@ -19,6 +19,7 @@ class Store {
   follow = true
   autoplay = true
   activePlaylistName: string | null = null
+  selectedChannel: string | null = null
   playing: string | undefined = undefined
   playlists: Record<string, PlaylistConfig>
   channels: Record<string, string>
@@ -78,11 +79,16 @@ class Store {
     const config = this.activePlaylistName
       ? this.playlists[this.activePlaylistName]
       : undefined
-    const base = config?.channels ?? Object.keys(this.channels)
+    const allChannels = Object.keys(this.channels)
+    const base = config?.channels ?? allChannels
+    const filtered =
+      !config && this.selectedChannel && allChannels.includes(this.selectedChannel)
+        ? [this.selectedChannel]
+        : base
     const extraPending = Object.keys(this.pendingUrlChannels).filter(
       n => !this.channels[n],
     )
-    return extraPending.length ? [...base, ...extraPending] : base
+    return extraPending.length > 0 ? [...filtered, ...extraPending] : filtered
   }
 
   setPlaying(arg?: string) {
@@ -104,6 +110,10 @@ class Store {
   }
   setPlaylist(arg: string) {
     this.activePlaylistName = arg
+    this.selectedChannel = null
+  }
+  setSelectedChannel(name: string) {
+    this.selectedChannel = this.selectedChannel === name ? null : name
   }
   setFilter(arg: string) {
     this.filter = arg
@@ -300,10 +310,6 @@ class Store {
     void this.persist()
   }
 
-  dismissPendingUrlChannels() {
-    this.pendingUrlChannels = {}
-  }
-
   private async handleAuthChange(
     user: {
       uid: string
@@ -340,6 +346,9 @@ class Store {
   }
 
   private init() {
+    if (Object.keys(this.pendingUrlChannels).length > 0) {
+      this.acceptPendingUrlChannels()
+    }
     this.disposers.push(
       subscribeToAuthChanges(user => {
         void this.handleAuthChange(user)
@@ -356,27 +365,47 @@ class Store {
         controller.abort()
         controller = new AbortController()
         const { signal } = controller
-        this.clearChannelProgress()
         const playlistItems = this.playlistItems
         const activeKeys = new Set(playlistItems.map(p => p.key))
+        console.warn(
+          '[store autorun] triggered, items:',
+          JSON.stringify(playlistItems.map(p => p.name)),
+          'activeKeys:',
+          JSON.stringify([...activeKeys]),
+        )
+        this.clearChannelProgress()
         this.pruneVideoMap(activeKeys)
+        console.warn(
+          '[store autorun] after prune, videoMap keys:',
+          untracked(() => JSON.stringify([...this.videoMap.keys()])),
+        )
         runInAction(() => {
           this.error = undefined
         })
         let fetchingChannel = ''
         try {
           for (const { name, item, key } of playlistItems) {
+            const alreadyLoaded = untracked(() => this.videoMap.has(key))
+            console.warn(
+              `[store autorun] channel "${name}" key="${key}" alreadyLoaded=${alreadyLoaded}`,
+            )
+            if (alreadyLoaded) {
+              continue
+            }
             fetchingChannel = name
             this.setChannelProgress(name, { current: 0, total: 0 })
+            console.warn(`[store autorun] setChannelProgress for "${name}", channelProgress.size=${untracked(() => this.channelProgress.size)}`)
             const ctx = {
               setProcessing: (progress: { current: number; total: number }) => {
                 this.setChannelProgress(name, progress)
               },
             }
+            const t0 = Date.now()
             const videos = await getCachedOrFetch(item, ctx, signal)
             if (signal.aborted) {
               return
             }
+            console.warn(`[store autorun] "${name}" fetch done in ${Date.now() - t0}ms, ${videos.length} videos`)
             this.setChannelVideos(key, name, videos)
           }
         } catch (error) {

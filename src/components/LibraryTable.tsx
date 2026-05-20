@@ -78,6 +78,12 @@ const LibraryTable = observer(function ({ model }: { model: StoreModel }) {
   )
 
   const isLoading = model.channelProgress.size > 0
+  console.warn(
+    '[LibraryTable] render isLoading:', isLoading,
+    'list.length:', list.length,
+    'channelProgress.size:', model.channelProgress.size,
+    'channelProgress keys:', JSON.stringify([...model.channelProgress.keys()]),
+  )
 
   return (
     <div className={styles.libraryScroll}>

@@ -19,17 +19,17 @@ export function getVideoId(url: string) {
     const handle = url
       .replace(/^https:\/\/(www\.)?youtube\.com\/@/, '')
       .split('?')[0]
-    return handle !== undefined ? { handle } : undefined
+    return handle === undefined ? undefined : { handle }
   }
   const match1 = /^.*?list=(.*?)(?:&|$)/.exec(url)
   if (match1) {
     const playlistId = match1[1]
-    return playlistId !== undefined ? { playlistId } : undefined
+    return playlistId === undefined ? undefined : { playlistId }
   }
   const match2 =
     /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url)
   const videoId = match2?.[2]
-  return videoId !== undefined && videoId.length === 11 ? { videoId } : undefined
+  return videoId?.length === 11 ? { videoId } : undefined
 }
 
 export type QueryItem =

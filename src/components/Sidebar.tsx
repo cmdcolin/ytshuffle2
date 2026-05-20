@@ -103,12 +103,22 @@ const Sidebar = observer(function ({
 
   const renderChannelItem = (name: string) => {
     const progress = model.channelProgress.get(name)
+    const isActive = name === model.selectedChannel
     return (
       <>
-        <div className={styles.item}>
-          <span className={styles.itemName} title={name}>
+        <div
+          className={`${styles.item}${isActive ? ` ${styles.itemActive}` : ''}`}
+        >
+          <button
+            className={styles.itemName}
+            onClick={() => {
+              model.setSelectedChannel(name)
+              onClose()
+            }}
+            title={name}
+          >
             {name}
-          </span>
+          </button>
           <div className={styles.itemActions}>
             <button
               className={styles.itemAction}
@@ -151,7 +161,9 @@ const Sidebar = observer(function ({
       <button
         className={styles.itemName}
         onClick={() => {
+          console.warn('[Sidebar] playlist clicked:', name)
           model.setPlaylist(name)
+          console.warn('[Sidebar] after setPlaylist, channelProgress.size:', model.channelProgress.size)
           onClose()
         }}
         title={name}
