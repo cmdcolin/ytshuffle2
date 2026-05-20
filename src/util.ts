@@ -62,7 +62,7 @@ export function parseChannels(raw: unknown): Record<string, string> {
     return {}
   }
   return Object.fromEntries(
-    Object.entries(raw as Record<string, unknown>).filter(
+    Object.entries(raw).filter(
       (e): e is [string, string] => typeof e[1] === 'string',
     ),
   )
@@ -73,28 +73,22 @@ export function parsePlaylists(raw: unknown): Record<string, PlaylistConfig> {
     return {}
   }
   return Object.fromEntries(
-    Object.entries(raw as Record<string, unknown>).flatMap(
-      ([key, val]): [string, PlaylistConfig][] => {
-        if (Array.isArray(val) && val.every(item => typeof item === 'string')) {
-          return [[key, { channels: val }]]
-        }
-        if (
-          val &&
-          typeof val === 'object' &&
-          !Array.isArray(val) &&
-          'channels' in val
-        ) {
-          const channels = (val as Record<string, unknown>).channels
-          if (
-            Array.isArray(channels) &&
-            channels.every(item => typeof item === 'string')
-          ) {
-            return [[key, { channels: channels }]]
-          }
-        }
-        return []
-      },
-    ),
+    Object.entries(raw).flatMap(([key, val]): [string, PlaylistConfig][] => {
+      if (Array.isArray(val) && val.every(item => typeof item === 'string')) {
+        return [[key, { channels: val }]]
+      }
+      if (
+        val &&
+        typeof val === 'object' &&
+        !Array.isArray(val) &&
+        'channels' in val &&
+        Array.isArray(val.channels) &&
+        val.channels.every((item: unknown) => typeof item === 'string')
+      ) {
+        return [[key, { channels: val.channels }]]
+      }
+      return []
+    }),
   )
 }
 

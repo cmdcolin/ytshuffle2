@@ -104,22 +104,17 @@ class Store {
     }
   }
 
-  setPlaying(arg?: string) {
-    this.playing = arg
-    if (arg !== undefined) {
-      this.playCounts.set(arg, (this.playCounts.get(arg) ?? 0) + 1)
-      if (this.uid) {
-        void this.trackPlayCount(this.uid, arg)
-      }
+  setPlaying(videoId: string) {
+    this.playing = videoId
+    this.playCounts.set(videoId, (this.playCounts.get(videoId) ?? 0) + 1)
+    if (this.uid) {
+      incrementPlayCount(this.uid, videoId).catch((error: unknown) => {
+        console.error('incrementPlayCount failed', error)
+      })
     }
   }
-
-  private async trackPlayCount(uid: string, videoId: string) {
-    try {
-      await incrementPlayCount(uid, videoId)
-    } catch (error: unknown) {
-      console.error('incrementPlayCount failed', error)
-    }
+  stopPlaying() {
+    this.playing = undefined
   }
   setPlaylist(arg: string) {
     this.activePlaylistName = arg
@@ -246,11 +241,8 @@ class Store {
       return this.videoFlat
     }
     const lc = this.filter.toLowerCase()
-    return this.videoFlat.filter(
-      video =>
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        video.channel?.toLowerCase().includes(lc) ||
-        video.title?.toLowerCase().includes(lc),
+    return this.videoFlat.filter(video =>
+      `${video.channel ?? ''} ${video.title ?? ''}`.toLowerCase().includes(lc),
     )
   }
   index(r: number) {

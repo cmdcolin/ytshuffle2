@@ -26,7 +26,7 @@ const PlayerControls = observer(function ({ model }: { model: StoreModel }) {
       </button>
       <button
         onClick={() => {
-          model.setPlaying()
+          model.stopPlaying()
         }}
         title="Stop"
       >
