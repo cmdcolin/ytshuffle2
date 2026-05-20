@@ -10,7 +10,7 @@ class HttpError extends Error {
   }
 }
 
-async function myfetch(url: string) {
+async function fetchJson(url: string) {
   const res = await fetch(url)
   if (!res.ok) {
     throw new HttpError(res.status, await res.text())
@@ -19,14 +19,14 @@ async function myfetch(url: string) {
 }
 
 async function getVideos(videoId: string) {
-  const res0 = await myfetch(
+  const res0 = await fetchJson(
     `${root}/videos?part=snippet&id=${videoId}&key=${API_KEY}`,
   )
   if (!res0.items?.[0]) {
     throw new HttpError(404, `Video not found: ${videoId}`)
   }
   const channelId = res0.items[0].snippet.channelId
-  const res1 = await myfetch(
+  const res1 = await fetchJson(
     `${root}/channels?part=contentDetails&id=${channelId}&key=${API_KEY}`,
   )
   if (!res1.items?.[0]) {

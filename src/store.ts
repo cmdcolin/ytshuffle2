@@ -13,8 +13,25 @@ import { applyQueryToUrl, clamp, getVideoId, parseChannels } from './util'
 
 import type { Playlist, PlaylistConfig } from './util'
 
+function channelsFromUrl(): Record<string, string> {
+  const params = new URLSearchParams(globalThis.location.search)
+  const sources = [
+    ['handles', (h: string) => `https://youtube.com/@${h}`],
+    ['ids', (id: string) => `https://www.youtube.com/watch?v=${id}`],
+    ['pids', (pid: string) => `https://www.youtube.com/playlist?list=${pid}`],
+  ] as const
+  const result: Record<string, string> = {}
+  for (const [key, toUrl] of sources) {
+    for (const name of (params.get(key) ?? '').split(',').filter(Boolean)) {
+      result[name] = toUrl(name)
+    }
+  }
+  return result
+}
+
 class Store {
   filter = ''
+  filterInput = ''
   shuffle = true
   follow = true
   autoplay = true
@@ -23,7 +40,6 @@ class Store {
   playing: string | undefined = undefined
   playlists: Record<string, PlaylistConfig>
   channels: Record<string, string>
-  pendingUrlChannels: Record<string, string> = {}
 
   videoMap = observable.map<string, Playlist>()
   channelProgress = observable.map<string, { current: number; total: number }>()
@@ -37,17 +53,25 @@ class Store {
   private readonly initialPlaylist: string
   private fetchRevision = 0
   private disposers: (() => void)[] = []
+  private filterTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor({ playlist }: { playlist: string }) {
     this.initialPlaylist = playlist
-    this.channels = parseChannels(JSON.parse(localStorage.getItem('channels') ?? '{}'))
+    const stored = parseChannels(
+      JSON.parse(localStorage.getItem('channels') ?? '{}'),
+    )
+    const fromUrl = channelsFromUrl()
+    const addedFromUrl = Object.keys(fromUrl).some(name => !stored[name])
+    this.channels = { ...fromUrl, ...stored }
     this.playlists = {}
-    this.applyUrlParams()
     makeAutoObservable(this, {
       videoMap: false,
       channelProgress: false,
       playCounts: false,
     })
+    if (addedFromUrl) {
+      void this.persist()
+    }
     this.init()
   }
 
@@ -59,7 +83,7 @@ class Store {
 
   get playlistItems() {
     return this.selectedChannelNames.flatMap(name => {
-      const url = this.channels[name] ?? this.pendingUrlChannels[name]
+      const url = this.channels[name]
       if (!url) {
         return []
       }
@@ -79,16 +103,13 @@ class Store {
     const config = this.activePlaylistName
       ? this.playlists[this.activePlaylistName]
       : undefined
-    const allChannels = Object.keys(this.channels)
-    const base = config?.channels ?? allChannels
-    const filtered =
-      !config && this.selectedChannel && allChannels.includes(this.selectedChannel)
-        ? [this.selectedChannel]
-        : base
-    const extraPending = Object.keys(this.pendingUrlChannels).filter(
-      n => !this.channels[n],
-    )
-    return extraPending.length > 0 ? [...filtered, ...extraPending] : filtered
+    if (config) {
+      return config.channels
+    } else if (this.selectedChannel && this.channels[this.selectedChannel]) {
+      return [this.selectedChannel]
+    } else {
+      return Object.keys(this.channels)
+    }
   }
 
   setPlaying(arg?: string) {
@@ -116,7 +137,15 @@ class Store {
     this.selectedChannel = this.selectedChannel === name ? null : name
   }
   setFilter(arg: string) {
-    this.filter = arg
+    this.filterInput = arg
+    if (this.filterTimer) {
+      clearTimeout(this.filterTimer)
+    }
+    this.filterTimer = setTimeout(() => {
+      runInAction(() => {
+        this.filter = arg
+      })
+    }, 200)
   }
   setShuffle(arg: boolean) {
     this.shuffle = arg
@@ -152,24 +181,6 @@ class Store {
     progress: { current: number; total: number },
   ) {
     this.channelProgress.set(name, progress)
-  }
-  clearChannelProgress() {
-    this.channelProgress.clear()
-  }
-  setChannelVideos(key: string, name: string, videos: Playlist) {
-    this.videoMap.set(key, videos)
-    this.channelProgress.delete(name)
-  }
-  pruneVideoMap(activeKeys: Set<string>) {
-    for (const key of this.videoMap.keys()) {
-      if (!activeKeys.has(key)) {
-        this.videoMap.delete(key)
-      }
-    }
-  }
-  invalidateChannel(key: string) {
-    this.videoMap.delete(key)
-    this.fetchRevision++
   }
   adoptCloudData(cloudData: {
     channels: Record<string, string>
@@ -209,7 +220,8 @@ class Store {
     }
     const key = getItemKey(item)
     await localforage.removeItem(key)
-    this.invalidateChannel(key)
+    this.videoMap.delete(key)
+    this.fetchRevision++
   }
 
   addChannel(name: string, url: string) {
@@ -288,28 +300,6 @@ class Store {
     }
   }
 
-  private applyUrlParams() {
-    const params = new URLSearchParams(globalThis.location.search)
-    const sources = [
-      ['handles', (h: string) => `https://youtube.com/@${h}`],
-      ['ids', (id: string) => `https://www.youtube.com/watch?v=${id}`],
-      ['pids', (pid: string) => `https://www.youtube.com/playlist?list=${pid}`],
-    ] as const
-    for (const [key, toUrl] of sources) {
-      for (const name of (params.get(key) ?? '').split(',').filter(Boolean)) {
-        if (!this.channels[name]) {
-          this.pendingUrlChannels[name] = toUrl(name)
-        }
-      }
-    }
-  }
-
-  acceptPendingUrlChannels() {
-    this.channels = { ...this.channels, ...this.pendingUrlChannels }
-    this.pendingUrlChannels = {}
-    void this.persist()
-  }
-
   private async handleAuthChange(
     user: {
       uid: string
@@ -346,9 +336,6 @@ class Store {
   }
 
   private init() {
-    if (Object.keys(this.pendingUrlChannels).length > 0) {
-      this.acceptPendingUrlChannels()
-    }
     this.disposers.push(
       subscribeToAuthChanges(user => {
         void this.handleAuthChange(user)
@@ -367,18 +354,12 @@ class Store {
         const { signal } = controller
         const playlistItems = this.playlistItems
         const activeKeys = new Set(playlistItems.map(p => p.key))
-        console.warn(
-          '[store autorun] triggered, items:',
-          JSON.stringify(playlistItems.map(p => p.name)),
-          'activeKeys:',
-          JSON.stringify([...activeKeys]),
-        )
-        this.clearChannelProgress()
-        this.pruneVideoMap(activeKeys)
-        console.warn(
-          '[store autorun] after prune, videoMap keys:',
-          untracked(() => JSON.stringify([...this.videoMap.keys()])),
-        )
+        this.channelProgress.clear()
+        for (const key of this.videoMap.keys()) {
+          if (!activeKeys.has(key)) {
+            this.videoMap.delete(key)
+          }
+        }
         runInAction(() => {
           this.error = undefined
         })
@@ -386,27 +367,22 @@ class Store {
         try {
           for (const { name, item, key } of playlistItems) {
             const alreadyLoaded = untracked(() => this.videoMap.has(key))
-            console.warn(
-              `[store autorun] channel "${name}" key="${key}" alreadyLoaded=${alreadyLoaded}`,
-            )
             if (alreadyLoaded) {
               continue
             }
             fetchingChannel = name
             this.setChannelProgress(name, { current: 0, total: 0 })
-            console.warn(`[store autorun] setChannelProgress for "${name}", channelProgress.size=${untracked(() => this.channelProgress.size)}`)
             const ctx = {
               setProcessing: (progress: { current: number; total: number }) => {
                 this.setChannelProgress(name, progress)
               },
             }
-            const t0 = Date.now()
             const videos = await getCachedOrFetch(item, ctx, signal)
             if (signal.aborted) {
               return
             }
-            console.warn(`[store autorun] "${name}" fetch done in ${Date.now() - t0}ms, ${videos.length} videos`)
-            this.setChannelVideos(key, name, videos)
+            this.videoMap.set(key, videos)
+            this.channelProgress.delete(name)
           }
         } catch (error) {
           if (

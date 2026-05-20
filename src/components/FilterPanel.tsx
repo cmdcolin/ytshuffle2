@@ -12,7 +12,7 @@ const FilterPanel = observer(function ({ model }: { model: StoreModel }) {
       <input
         id="filter"
         type="text"
-        value={model.filter}
+        value={model.filterInput}
         onChange={event => {
           model.setFilter(event.target.value)
         }}

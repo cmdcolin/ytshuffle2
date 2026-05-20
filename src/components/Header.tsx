@@ -84,12 +84,14 @@ export default function Header({
                 </Button>
                 <Button
                   onClick={() => {
+                    setMenuOpen(false)
                     void (async () => {
                       try {
                         await localforage.clear()
                         globalThis.location.reload()
                       } catch (error: unknown) {
                         console.error('clear cache failed', error)
+                        model.setError('Failed to clear local cache.')
                       }
                     })()
                   }}
@@ -99,6 +101,7 @@ export default function Header({
                 {model.uid ? (
                   <Button
                     onClick={() => {
+                      setMenuOpen(false)
                       void (async () => {
                         try {
                           await signOut()
@@ -106,7 +109,6 @@ export default function Header({
                           console.error('signOut failed', error)
                           model.setError('Failed to sign out.')
                         }
-                        setMenuOpen(false)
                       })()
                     }}
                   >

@@ -122,6 +122,7 @@
 
 .itemName {
   flex: 1;
+  justify-content: flex-start;
   text-align: left;
   background: none;
   border: none;

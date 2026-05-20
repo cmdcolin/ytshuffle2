@@ -161,9 +161,7 @@ const Sidebar = observer(function ({
       <button
         className={styles.itemName}
         onClick={() => {
-          console.warn('[Sidebar] playlist clicked:', name)
           model.setPlaylist(name)
-          console.warn('[Sidebar] after setPlaylist, channelProgress.size:', model.channelProgress.size)
           onClose()
         }}
         title={name}

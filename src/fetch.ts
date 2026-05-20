@@ -5,7 +5,7 @@ import {
   getContentsLambdaEndpoint,
   getHandleLambdaEndpoint,
 } from './consts'
-import { myfetch } from './util'
+import { fetchJson } from './util'
 
 import type { Item, Playlist, QueryItem } from './util'
 
@@ -58,7 +58,7 @@ async function fetchPlaylistById(
   const items: Item[] = []
   const url = `${getContentsLambdaEndpoint}?playlistId=${playlistId}`
   do {
-    const res = await myfetch<{
+    const res = await fetchJson<{
       items: PreItem[]
       nextPageToken?: string
       totalResults?: number
@@ -74,27 +74,19 @@ async function fetchPlaylistById(
   return items
 }
 
-async function fetchItemVideos(
+async function resolvePlaylistId(
   item: QueryItem,
-  ctx: ProgressCtx,
   signal: AbortSignal,
-): Promise<Playlist> {
+): Promise<string> {
   if ('playlistId' in item) {
-    return fetchPlaylistById(ctx, item.playlistId, signal)
+    return item.playlistId
   }
-  if ('videoId' in item) {
-    ctx.setProcessing({ current: 0, total: 0 })
-    const res = await myfetch<{ playlistId: string }>(
-      `${getChannelLambdaEndpoint}?videoId=${item.videoId}`,
-      { signal },
-    )
-    return fetchPlaylistById(ctx, res.playlistId, signal)
-  }
-  const res = await myfetch<{ playlistId: string }>(
-    `${getHandleLambdaEndpoint}?handle=${item.handle}`,
-    { signal },
-  )
-  return fetchPlaylistById(ctx, res.playlistId, signal)
+  const url =
+    'videoId' in item
+      ? `${getChannelLambdaEndpoint}?videoId=${item.videoId}`
+      : `${getHandleLambdaEndpoint}?handle=${item.handle}`
+  const res = await fetchJson<{ playlistId: string }>(url, { signal })
+  return res.playlistId
 }
 
 export async function getCachedOrFetch(
@@ -105,7 +97,8 @@ export async function getCachedOrFetch(
   const key = getItemKey(item)
   let videos = await localforage.getItem<Playlist>(key)
   if (!videos) {
-    videos = await fetchItemVideos(item, ctx, signal)
+    const playlistId = await resolvePlaylistId(item, signal)
+    videos = await fetchPlaylistById(ctx, playlistId, signal)
     await localforage.setItem(key, videos)
   }
   return videos

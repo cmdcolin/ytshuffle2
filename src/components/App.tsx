@@ -11,14 +11,11 @@ import YoutubePanel from './YoutubePanel'
 import { createStore } from '../store'
 import styles from './App.module.css'
 
-import type { StoreModel } from '../store'
-
-export default function App({ initialPlaylist }: { initialPlaylist: string }) {
-  const [model] = useState(() => createStore({ playlist: initialPlaylist }))
-  return <AppView model={model} />
-}
-
-const AppView = observer(function ({ model }: { model: StoreModel }) {
+const App = observer(function App() {
+  const [model] = useState(() => {
+    const params = new URLSearchParams(globalThis.location.search)
+    return createStore({ playlist: params.get('playlist') ?? '' })
+  })
   const [sidebarOpen, setSidebarOpen] = useState(false)
   return (
     <div className={styles.appRoot}>
@@ -48,3 +45,5 @@ const AppView = observer(function ({ model }: { model: StoreModel }) {
     </div>
   )
 })
+
+export default App

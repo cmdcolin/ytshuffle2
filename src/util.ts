@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export async function myfetch<T>(url: string, rest?: RequestInit) {
+export async function fetchJson<T>(url: string, rest?: RequestInit) {
   const response = await fetch(url, rest)
   if (!response.ok) {
     const endpoint = new URL(url).pathname.split('/').pop() ?? url

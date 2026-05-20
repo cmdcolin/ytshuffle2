@@ -19,6 +19,9 @@
 }
 
 .errorBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   margin: 16px;
   padding: 10px 14px;
   background: light-dark(#fff5f5, #2a1515);
@@ -26,6 +29,27 @@
   border-radius: 6px;
   color: light-dark(#991b1b, #f8a0a0);
   font-size: 13px;
+}
+
+.errorMessage {
+  flex: 1;
+}
+
+.errorClose {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  opacity: 0.7;
+}
+.errorClose:hover {
+  opacity: 1;
+}
+
+.sortIconInactive {
+  opacity: 0.25;
 }
 
 .spinner {

@@ -39,11 +39,11 @@ function compareItems(
 function SortIcon({ dir }: { dir: SortDir | undefined }) {
   if (dir === 'asc') {
     return <FaChevronUp />
-  }
-  if (dir === 'desc') {
+  } else if (dir === 'desc') {
     return <FaChevronDown />
+  } else {
+    return <FaChevronDown className={styles.sortIconInactive} />
   }
-  return null
 }
 
 const LibraryTable = observer(function ({ model }: { model: StoreModel }) {
@@ -78,17 +78,22 @@ const LibraryTable = observer(function ({ model }: { model: StoreModel }) {
   )
 
   const isLoading = model.channelProgress.size > 0
-  console.warn(
-    '[LibraryTable] render isLoading:', isLoading,
-    'list.length:', list.length,
-    'channelProgress.size:', model.channelProgress.size,
-    'channelProgress keys:', JSON.stringify([...model.channelProgress.keys()]),
-  )
 
   return (
     <div className={styles.libraryScroll}>
       {model.error ? (
-        <div className={styles.errorBox}>{model.error}</div>
+        <div className={styles.errorBox}>
+          <span className={styles.errorMessage}>{model.error}</span>
+          <button
+            className={styles.errorClose}
+            onClick={() => {
+              model.setError(undefined)
+            }}
+            title="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
       ) : null}
       {isLoading && list.length === 0 ? (
         <div className={styles.libraryStatus}>
@@ -107,27 +112,22 @@ const LibraryTable = observer(function ({ model }: { model: StoreModel }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map(item => {
-              const plays = playCounts.get(item.videoId)
-              return (
-                <tr
-                  key={item.videoId}
-                  id={`vid${item.videoId}`}
-                  className={styles.libraryRow}
-                  onClick={() => {
-                    model.setPlaying(item.videoId)
-                  }}
-                >
-                  <td>{item.videoId === model.playing ? '▶' : ''}</td>
-                  <td>{item.title}</td>
-                  <td>{item.channel}</td>
-                  <td>
-                    {formatDistanceToNowStrict(new Date(item.publishedAt))}
-                  </td>
-                  <td>{plays}</td>
-                </tr>
-              )
-            })}
+            {sorted.map(item => (
+              <tr
+                key={item.videoId}
+                id={`vid${item.videoId}`}
+                className={styles.libraryRow}
+                onClick={() => {
+                  model.setPlaying(item.videoId)
+                }}
+              >
+                <td>{item.videoId === model.playing ? '▶' : ''}</td>
+                <td>{item.title}</td>
+                <td>{item.channel}</td>
+                <td>{formatDistanceToNowStrict(new Date(item.publishedAt))}</td>
+                <td>{playCounts.get(item.videoId) ?? 0}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       ) : (

@@ -10,7 +10,7 @@ class HttpError extends Error {
   }
 }
 
-async function myfetch(url: string) {
+async function fetchJson(url: string) {
   const res = await fetch(url)
   if (!res.ok) {
     throw new HttpError(res.status, await res.text())
@@ -19,7 +19,7 @@ async function myfetch(url: string) {
 }
 
 async function getVideos(handle: string) {
-  const res1 = await myfetch(
+  const res1 = await fetchJson(
     `${root}/channels?part=contentDetails&forHandle=${handle}&key=${API_KEY}`,
   )
   if (!res1.items?.[0]) {

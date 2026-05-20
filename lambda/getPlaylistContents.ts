@@ -11,7 +11,7 @@ class HttpError extends Error {
   }
 }
 
-async function myfetch(url: string) {
+async function fetchJson(url: string) {
   const res = await fetch(url)
   if (!res.ok) {
     throw new HttpError(res.status, await res.text())
@@ -27,7 +27,7 @@ async function getVideos(
   if (nextPageToken) {
     url += `&pageToken=${nextPageToken}`
   }
-  const res = await myfetch(url)
+  const res = await fetchJson(url)
   return {
     items: res.items,
     nextPageToken: res.nextPageToken,

@@ -9,12 +9,7 @@ export default function ConfirmDialog({
   onClose: () => void
 }) {
   return (
-    <BaseDialog
-      open={open}
-      onClose={() => {
-        /* must click submit */
-      }}
-    >
+    <BaseDialog open={open} onClose={onClose}>
       <p>
         By using this website you agree to usage of the &quot;Privacy
         Policy&quot; below
