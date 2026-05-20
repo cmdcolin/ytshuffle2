@@ -25,10 +25,6 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false)
   const [openDialog, setOpenDialog] = useState<DialogType>(null)
 
-  const closeDialog = () => {
-    setOpenDialog(null)
-  }
-
   return (
     <div className={styles.header}>
       <img src={logo} className={styles.headerLogo} />
@@ -122,21 +118,21 @@ export default function Header({
         <SettingsDialog
           model={model}
           onClose={() => {
-            closeDialog()
+            setOpenDialog(null)
           }}
         />
       )}
       {openDialog === 'policy' && (
         <ConfirmDialog
           onClose={() => {
-            closeDialog()
+            setOpenDialog(null)
           }}
         />
       )}
       {openDialog === 'about' && (
         <AboutDialog
           onClose={() => {
-            closeDialog()
+            setOpenDialog(null)
           }}
         />
       )}

@@ -51,8 +51,6 @@ class Store {
   authLoading = true
 
   private readonly initialPlaylist: string
-  private fetchRevision = 0
-  private disposers: (() => void)[] = []
   private filterTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor({ playlist }: { playlist: string }) {
@@ -73,12 +71,6 @@ class Store {
       void this.persist()
     }
     this.init()
-  }
-
-  destroy() {
-    for (const disposer of this.disposers) {
-      disposer()
-    }
   }
 
   get playlistItems() {
@@ -156,18 +148,6 @@ class Store {
   setAutoplay(arg: boolean) {
     this.autoplay = arg
   }
-  applyAuthState(
-    user: {
-      uid: string
-      displayName: string | null
-      photoURL: string | null
-    } | null,
-  ) {
-    this.uid = user?.uid ?? null
-    this.displayName = user?.displayName ?? null
-    this.photoURL = user?.photoURL ?? null
-    this.authLoading = false
-  }
   setError(msg: string | undefined) {
     this.error = msg
   }
@@ -221,7 +201,6 @@ class Store {
     const key = getItemKey(item)
     await localforage.removeItem(key)
     this.videoMap.delete(key)
-    this.fetchRevision++
   }
 
   addChannel(name: string, url: string) {
@@ -308,7 +287,10 @@ class Store {
     } | null,
   ) {
     const wasSignedIn = this.uid !== null
-    this.applyAuthState(user)
+    this.uid = user?.uid ?? null
+    this.displayName = user?.displayName ?? null
+    this.photoURL = user?.photoURL ?? null
+    this.authLoading = false
     if (user) {
       try {
         const [cloudData, counts] = await Promise.all([
@@ -336,13 +318,11 @@ class Store {
   }
 
   private init() {
-    this.disposers.push(
-      subscribeToAuthChanges(user => {
-        void this.handleAuthChange(user)
-      }),
-    )
+    subscribeToAuthChanges(user => {
+      void this.handleAuthChange(user)
+    })
 
-    const onKeyDown = (event: KeyboardEvent) => {
+    document.addEventListener('keydown', event => {
       const t = event.target
       const inField = t instanceof Element && t.matches('input, textarea')
       if (!inField) {
@@ -354,85 +334,77 @@ class Store {
           this.goToNext()
         }
       }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    this.disposers.push(() => {
-      document.removeEventListener('keydown', onKeyDown)
     })
 
     let controller = new AbortController()
-    this.disposers.push(
-      () => {
-        controller.abort()
-      },
-      autorun(async () => {
-        void this.fetchRevision
-        controller.abort()
-        controller = new AbortController()
-        const { signal } = controller
-        const playlistItems = this.playlistItems
-        const activeKeys = new Set(playlistItems.map(p => p.key))
-        this.channelProgress.clear()
-        for (const key of this.videoMap.keys()) {
-          if (!activeKeys.has(key)) {
-            this.videoMap.delete(key)
-          }
+    autorun(async () => {
+      controller.abort()
+      controller = new AbortController()
+      const { signal } = controller
+      const playlistItems = this.playlistItems
+      const activeKeys = new Set(playlistItems.map(p => p.key))
+      this.channelProgress.clear()
+      for (const key of this.videoMap.keys()) {
+        if (!activeKeys.has(key)) {
+          this.videoMap.delete(key)
         }
-        runInAction(() => {
-          this.error = undefined
-        })
-        let fetchingChannel = ''
-        try {
-          for (const { name, item, key } of playlistItems) {
-            const alreadyLoaded = untracked(() => this.videoMap.has(key))
-            if (alreadyLoaded) {
-              continue
-            }
-            fetchingChannel = name
-            this.setChannelProgress(name, { current: 0, total: 0 })
-            const ctx = {
-              setProcessing: (progress: { current: number; total: number }) => {
-                this.setChannelProgress(name, progress)
-              },
-            }
-            const videos = await getCachedOrFetch(item, ctx, signal)
-            if (signal.aborted) {
-              return
-            }
-            this.videoMap.set(key, videos)
-            this.channelProgress.delete(name)
+      }
+      runInAction(() => {
+        this.error = undefined
+      })
+      let fetchingChannel = ''
+      try {
+        for (const { name, item, key } of playlistItems) {
+          const alreadyLoaded = untracked(() => this.videoMap.has(key))
+          if (alreadyLoaded) {
+            continue
           }
-        } catch (error) {
-          if (
-            signal.aborted ||
-            (error instanceof Error && error.name === 'AbortError')
-          ) {
+          fetchingChannel = name
+          this.setChannelProgress(name, { current: 0, total: 0 })
+          const ctx = {
+            setProcessing: (progress: { current: number; total: number }) => {
+              this.setChannelProgress(name, progress)
+            },
+          }
+          const videos = await getCachedOrFetch(item, ctx, signal)
+          if (signal.aborted) {
             return
           }
-          const msg = error instanceof Error ? error.message : `${error}`
-          const withContext = fetchingChannel
-            ? `"${fetchingChannel}": ${msg}`
-            : msg
-          console.error(withContext)
-          runInAction(() => {
-            this.error = withContext
-            this.channelProgress.clear()
-          })
+          this.videoMap.set(key, videos)
+          this.channelProgress.delete(name)
         }
-      }),
-      autorun(() => {
-        const url = new URL(globalThis.location.href)
-        applyQueryToUrl(url, this.query, this.activePlaylistName ?? '')
-        globalThis.history.replaceState({}, '', url)
-      }),
-      autorun(() => {
-        if (this.follow && this.playing) {
-          document
-            .querySelector(`#vid${this.playing}`)
-            ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      } catch (error) {
+        if (
+          signal.aborted ||
+          (error instanceof Error && error.name === 'AbortError')
+        ) {
+          return
         }
-      }),
-    )
+        const msg = error instanceof Error ? error.message : `${error}`
+        const withContext = fetchingChannel
+          ? `"${fetchingChannel}": ${msg}`
+          : msg
+        console.error(withContext)
+        runInAction(() => {
+          this.error = withContext
+          this.channelProgress.clear()
+        })
+      }
+    })
+
+    autorun(() => {
+      const url = new URL(globalThis.location.href)
+      applyQueryToUrl(url, this.query, this.activePlaylistName ?? '')
+      globalThis.history.replaceState({}, '', url)
+    })
+
+    autorun(() => {
+      if (this.follow && this.playing) {
+        document
+          .querySelector(`#vid${this.playing}`)
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    })
   }
 }
 
