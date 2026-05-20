@@ -1,13 +1,12 @@
-import { Suspense, lazy, useState } from 'react'
+import { useState } from 'react'
 
 import { observer } from 'mobx-react-lite'
 
+import AddChannelDialog from './AddChannelDialog'
+import EditPlaylistDialog from './EditPlaylistDialog'
 import styles from './Sidebar.module.css'
 
 import type { StoreModel } from '../store'
-
-const EditPlaylistDialog = lazy(() => import('./EditPlaylistDialog'))
-const AddChannelDialog = lazy(() => import('./AddChannelDialog'))
 
 type EditModal = { originalName: string; channels: string[] } | null
 
@@ -123,14 +122,10 @@ const Sidebar = observer(function ({
             <button
               className={styles.itemAction}
               onClick={() => {
-                void (async () => {
-                  try {
-                    await model.refreshChannel(name)
-                  } catch (error: unknown) {
-                    console.error('refreshChannel failed', error)
-                    model.setError(`Failed to refresh "${name}".`)
-                  }
-                })()
+                model.refreshChannel(name).catch((error: unknown) => {
+                  console.error('refreshChannel failed', error)
+                  model.setError(`Failed to refresh "${name}".`)
+                })
               }}
               title="Refresh"
             >
@@ -238,23 +233,24 @@ const Sidebar = observer(function ({
           />
 
           {editModal === null ? null : (
-            <Suspense fallback={null}>
-              <EditPlaylistDialog
-                open
-                initialName={editModal.originalName}
-                initialChannels={editModal.channels}
-                availableChannels={channelNames}
-                onClose={handleSavePlaylist}
-              />
-            </Suspense>
+            <EditPlaylistDialog
+              initialName={editModal.originalName}
+              initialChannels={editModal.channels}
+              availableChannels={channelNames}
+              onClose={result => {
+                handleSavePlaylist(result)
+              }}
+            />
           )}
         </>
       )}
 
       {showAddChannel ? (
-        <Suspense fallback={null}>
-          <AddChannelDialog open onClose={handleAddChannel} />
-        </Suspense>
+        <AddChannelDialog
+          onClose={results => {
+            handleAddChannel(results)
+          }}
+        />
       ) : null}
     </div>
   )

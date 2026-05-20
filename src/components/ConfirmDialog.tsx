@@ -1,15 +1,8 @@
 import BaseDialog from './BaseDialog'
-import Button from './Button'
 
-export default function ConfirmDialog({
-  open,
-  onClose,
-}: {
-  open: boolean
-  onClose: () => void
-}) {
+export default function ConfirmDialog({ onClose }: { onClose: () => void }) {
   return (
-    <BaseDialog open={open} onClose={onClose}>
+    <BaseDialog onClose={onClose}>
       <p>
         By using this website you agree to usage of the &quot;Privacy
         Policy&quot; below
@@ -45,14 +38,14 @@ export default function ConfirmDialog({
         . If there are any concerns, you can e-mail{' '}
         <a href="mailto:colin.diesh@gmail.com">me</a>.
       </p>
-      <Button
+      <button
         onClick={() => {
           localStorage.setItem('confirmed', 'true')
           onClose()
         }}
       >
         accept
-      </Button>
+      </button>
     </BaseDialog>
   )
 }

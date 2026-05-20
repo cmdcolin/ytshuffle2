@@ -7,16 +7,14 @@ import styles from './SettingsDialog.module.css'
 import type { StoreModel } from '../store'
 
 const SettingsDialog = observer(function ({
-  open,
   onClose,
   model,
 }: {
-  open: boolean
   onClose: () => void
   model: StoreModel
 }) {
   return (
-    <BaseDialog open={open} onClose={onClose}>
+    <BaseDialog onClose={onClose}>
       <h2 className={styles.title}>Settings</h2>
       <Checkbox
         id="settings_shuffle"

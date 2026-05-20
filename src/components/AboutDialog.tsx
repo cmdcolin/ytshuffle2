@@ -3,15 +3,9 @@ import { version } from '../../package.json'
 import logo from '../favicon.svg'
 import styles from './AboutDialog.module.css'
 
-export default function AboutDialog({
-  open,
-  onClose,
-}: {
-  open: boolean
-  onClose: () => void
-}) {
+export default function AboutDialog({ onClose }: { onClose: () => void }) {
   return (
-    <BaseDialog open={open} onClose={onClose}>
+    <BaseDialog onClose={onClose}>
       <div className={styles.dialogHeader}>
         <img src={logo} />
         <h2>ytshuffle {version}</h2>

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 
 import BaseDialog from './BaseDialog'
-import Button from './Button'
 import { getItemKey } from '../fetch'
 import { getVideoId } from '../util'
 import styles from './AddChannelDialog.module.css'
@@ -23,10 +22,8 @@ function parseLines(text: string) {
 }
 
 export default function AddChannelDialog({
-  open,
   onClose,
 }: {
-  open: boolean
   onClose: (results?: { name: string; url: string }[]) => void
 }) {
   const [text, setText] = useState('')
@@ -36,7 +33,7 @@ export default function AddChannelDialog({
   }
 
   return (
-    <BaseDialog open={open} onClose={handleClose}>
+    <BaseDialog onClose={handleClose}>
       <form
         onSubmit={event => {
           event.preventDefault()
@@ -61,8 +58,8 @@ export default function AddChannelDialog({
           />
         </div>
         <div className={styles.actions}>
-          <Button type="submit">Add</Button>
-          <Button
+          <button type="submit">Add</button>
+          <button
             type="button"
             onClick={() => {
               setText(t =>
@@ -73,10 +70,15 @@ export default function AddChannelDialog({
             }}
           >
             Example
-          </Button>
-          <Button type="button" onClick={handleClose}>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              handleClose()
+            }}
+          >
             Cancel
-          </Button>
+          </button>
         </div>
       </form>
     </BaseDialog>

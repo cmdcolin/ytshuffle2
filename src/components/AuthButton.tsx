@@ -2,7 +2,6 @@ import { observer } from 'mobx-react-lite'
 
 import { signInWithGoogle } from '../firebase'
 import styles from './AuthButton.module.css'
-import Button from './Button'
 
 import type { StoreModel } from '../store'
 
@@ -15,19 +14,15 @@ export default observer(function AuthButton({ model }: { model: StoreModel }) {
 
   if (!uid) {
     return (
-      <Button
+      <button
         onClick={() => {
-          void (async () => {
-            try {
-              await signInWithGoogle()
-            } catch (error: unknown) {
-              console.error('signInWithGoogle failed', error)
-            }
-          })()
+          signInWithGoogle().catch((error: unknown) => {
+            console.error('signInWithGoogle failed', error)
+          })
         }}
       >
         Sign in
-      </Button>
+      </button>
     )
   }
 

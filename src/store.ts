@@ -186,19 +186,12 @@ class Store {
     channels: Record<string, string>
     playlists: Record<string, PlaylistConfig>
   }) {
-    const fromUrl = channelsFromUrl()
-    const addedFromUrl = Object.keys(fromUrl).some(
-      name => !cloudData.channels[name],
-    )
-    this.channels = { ...fromUrl, ...cloudData.channels }
+    this.channels = cloudData.channels
     this.playlists = cloudData.playlists
     const firstKey = Object.keys(cloudData.playlists)[0]
     this.activePlaylistName = cloudData.playlists[this.initialPlaylist]
       ? this.initialPlaylist
       : (firstKey ?? null)
-    if (addedFromUrl) {
-      void this.persist()
-    }
   }
 
   private async persist() {

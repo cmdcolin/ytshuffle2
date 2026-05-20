@@ -1,5 +1,3 @@
-import { useEffect, useRef } from 'react'
-
 export async function fetchJson<T>(url: string, rest?: RequestInit) {
   const response = await fetch(url, rest)
   if (!response.ok) {
@@ -132,17 +130,3 @@ export function applyQueryToUrl(url: URL, query: string, playlist: string) {
   }
 }
 
-export function useDialogShown(open: boolean) {
-  const ref = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    if (!ref.current) {
-      return
-    }
-    if (open && !ref.current.open) {
-      ref.current.showModal()
-    } else if (!open && ref.current.open) {
-      ref.current.close()
-    }
-  }, [open])
-  return ref
-}

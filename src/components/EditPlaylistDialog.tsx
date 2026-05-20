@@ -1,17 +1,14 @@
 import { useState } from 'react'
 
 import BaseDialog from './BaseDialog'
-import Button from './Button'
 import styles from './EditPlaylistDialog.module.css'
 
 export default function EditPlaylistDialog({
-  open,
   initialName,
   initialChannels,
   availableChannels,
   onClose,
 }: {
-  open: boolean
   initialName: string
   initialChannels: string[]
   availableChannels: string[]
@@ -34,7 +31,7 @@ export default function EditPlaylistDialog({
   }
 
   return (
-    <BaseDialog open={open} onClose={onClose}>
+    <BaseDialog onClose={onClose}>
       <form
         onSubmit={event => {
           event.preventDefault()
@@ -78,15 +75,15 @@ export default function EditPlaylistDialog({
           )}
         </div>
         <div className={styles.actions}>
-          <Button type="submit">{isNew ? 'Create' : 'Save'}</Button>
-          <Button
+          <button type="submit">{isNew ? 'Create' : 'Save'}</button>
+          <button
             type="button"
             onClick={() => {
               onClose()
             }}
           >
             Cancel
-          </Button>
+          </button>
         </div>
       </form>
     </BaseDialog>

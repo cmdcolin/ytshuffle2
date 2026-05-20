@@ -1,19 +1,17 @@
-import { Suspense, lazy, useState } from 'react'
+import { useState } from 'react'
 
 import localforage from 'localforage'
 import { FaBars, FaEllipsisVertical } from 'react-icons/fa6'
 
 import logo from '../favicon.svg'
 import { signOut } from '../firebase'
+import AboutDialog from './AboutDialog'
 import AuthButton from './AuthButton'
-import Button from './Button'
+import ConfirmDialog from './ConfirmDialog'
 import styles from './Header.module.css'
+import SettingsDialog from './SettingsDialog'
 
 import type { StoreModel } from '../store'
-
-const ConfirmDialog = lazy(() => import('./ConfirmDialog'))
-const AboutDialog = lazy(() => import('./AboutDialog'))
-const SettingsDialog = lazy(() => import('./SettingsDialog'))
 
 type DialogType = 'settings' | 'policy' | 'about' | null
 
@@ -26,6 +24,10 @@ export default function Header({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [openDialog, setOpenDialog] = useState<DialogType>(null)
+
+  const closeDialog = () => {
+    setOpenDialog(null)
+  }
 
   return (
     <div className={styles.header}>
@@ -42,13 +44,13 @@ export default function Header({
       <div className={styles.menuContainer}>
         <AuthButton model={model} />
         <div className={styles.menuWrapper}>
-          <Button
+          <button
             onClick={() => {
               setMenuOpen(o => !o)
             }}
           >
             <FaEllipsisVertical size={18} />
-          </Button>
+          </button>
           {menuOpen ? (
             <>
               <div
@@ -58,62 +60,58 @@ export default function Header({
                 }}
               />
               <div className={styles.dropdown}>
-                <Button
+                <button
                   onClick={() => {
                     setOpenDialog('settings')
                     setMenuOpen(false)
                   }}
                 >
                   Settings
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={() => {
                     setOpenDialog('about')
                     setMenuOpen(false)
                   }}
                 >
                   About
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={() => {
                     setOpenDialog('policy')
                     setMenuOpen(false)
                   }}
                 >
                   Privacy policy
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={() => {
                     setMenuOpen(false)
-                    void (async () => {
-                      try {
-                        await localforage.clear()
+                    localforage.clear().then(
+                      () => {
                         globalThis.location.reload()
-                      } catch (error: unknown) {
+                      },
+                      (error: unknown) => {
                         console.error('clear cache failed', error)
                         model.setError('Failed to clear local cache.')
-                      }
-                    })()
+                      },
+                    )
                   }}
                 >
                   Clear local cache
-                </Button>
+                </button>
                 {model.uid ? (
-                  <Button
+                  <button
                     onClick={() => {
                       setMenuOpen(false)
-                      void (async () => {
-                        try {
-                          await signOut()
-                        } catch (error: unknown) {
-                          console.error('signOut failed', error)
-                          model.setError('Failed to sign out.')
-                        }
-                      })()
+                      signOut().catch((error: unknown) => {
+                        console.error('signOut failed', error)
+                        model.setError('Failed to sign out.')
+                      })
                     }}
                   >
                     Sign out
-                  </Button>
+                  </button>
                 ) : null}
               </div>
             </>
@@ -121,35 +119,26 @@ export default function Header({
         </div>
       </div>
       {openDialog === 'settings' && (
-        <Suspense fallback={null}>
-          <SettingsDialog
-            open
-            model={model}
-            onClose={() => {
-              setOpenDialog(null)
-            }}
-          />
-        </Suspense>
+        <SettingsDialog
+          model={model}
+          onClose={() => {
+            closeDialog()
+          }}
+        />
       )}
       {openDialog === 'policy' && (
-        <Suspense fallback={null}>
-          <ConfirmDialog
-            open
-            onClose={() => {
-              setOpenDialog(null)
-            }}
-          />
-        </Suspense>
+        <ConfirmDialog
+          onClose={() => {
+            closeDialog()
+          }}
+        />
       )}
       {openDialog === 'about' && (
-        <Suspense fallback={null}>
-          <AboutDialog
-            open
-            onClose={() => {
-              setOpenDialog(null)
-            }}
-          />
-        </Suspense>
+        <AboutDialog
+          onClose={() => {
+            closeDialog()
+          }}
+        />
       )}
     </div>
   )

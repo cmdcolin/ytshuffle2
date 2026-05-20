@@ -1,6 +1,5 @@
 import { observer } from 'mobx-react-lite'
 
-import Button from './Button'
 import styles from './FilterPanel.module.css'
 
 import type { StoreModel } from '../store'
@@ -17,13 +16,13 @@ const FilterPanel = observer(function ({ model }: { model: StoreModel }) {
           model.setFilter(event.target.value)
         }}
       />
-      <Button
+      <button
         onClick={() => {
           model.setFilter('')
         }}
       >
         Clear
-      </Button>
+      </button>
     </div>
   )
 })
