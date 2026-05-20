@@ -77,6 +77,25 @@ const Sidebar = observer(function ({
     setDialog(null)
   }
 
+  const openPlaylistDialog = (
+    originalName: string,
+    initialChannels: string[],
+  ) => {
+    setDialog(
+      <EditPlaylistDialog
+        initialName={originalName}
+        initialChannels={initialChannels}
+        availableChannels={channelNames}
+        onClose={result => {
+          if (result) {
+            model.savePlaylist(originalName, result.name, result.channels)
+          }
+          closeDialog()
+        }}
+      />,
+    )
+  }
+
   return (
     <div className={`${styles.sidebar}${open ? ` ${styles.sidebarOpen}` : ''}`}>
       <div className={styles.sidebarHeader}>
@@ -172,19 +191,7 @@ const Sidebar = observer(function ({
             <button
               className={styles.sidebarNewInline}
               onClick={() => {
-                setDialog(
-                  <EditPlaylistDialog
-                    initialName=""
-                    initialChannels={[]}
-                    availableChannels={channelNames}
-                    onClose={result => {
-                      if (result) {
-                        model.savePlaylist('', result.name, result.channels)
-                      }
-                      closeDialog()
-                    }}
-                  />,
-                )
+                openPlaylistDialog('', [])
               }}
               title="Add Playlists"
             >
@@ -192,7 +199,7 @@ const Sidebar = observer(function ({
             </button>
           </div>
           <div>
-            {Object.keys(playlists).map(name => (
+            {Object.entries(playlists).map(([name, config]) => (
               <div key={name}>
                 <SidebarItem
                   name={name}
@@ -206,26 +213,7 @@ const Sidebar = observer(function ({
                       <button
                         className={styles.itemAction}
                         onClick={() => {
-                          const config = playlists[name]
-                          if (config) {
-                            setDialog(
-                              <EditPlaylistDialog
-                                initialName={name}
-                                initialChannels={config.channels}
-                                availableChannels={channelNames}
-                                onClose={result => {
-                                  if (result) {
-                                    model.savePlaylist(
-                                      name,
-                                      result.name,
-                                      result.channels,
-                                    )
-                                  }
-                                  closeDialog()
-                                }}
-                              />,
-                            )
-                          }
+                          openPlaylistDialog(name, config.channels)
                         }}
                         title="Edit"
                       >

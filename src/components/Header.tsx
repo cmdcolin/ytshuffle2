@@ -60,7 +60,9 @@ export default function Header({
               <div className={styles.dropdown}>
                 <button
                   onClick={() => {
-                    setDialog(<SettingsDialog model={model} onClose={closeDialog} />)
+                    setDialog(
+                      <SettingsDialog model={model} onClose={closeDialog} />,
+                    )
                     setMenuOpen(false)
                   }}
                 >

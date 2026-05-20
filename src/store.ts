@@ -89,14 +89,13 @@ class Store {
   get playlistItems() {
     return this.selectedChannelNames.flatMap(name => {
       const url = this.channels[name]
-      if (!url) {
-        return []
+      if (url) {
+        const item = getVideoId(url)
+        if (item) {
+          return [{ name, url, item, key: getItemKey(item) }]
+        }
       }
-      const item = getVideoId(url)
-      if (!item) {
-        return []
-      }
-      return [{ name, url, item, key: getItemKey(item) }]
+      return []
     })
   }
 
@@ -108,13 +107,11 @@ class Store {
     const config = this.activePlaylistName
       ? this.playlists[this.activePlaylistName]
       : undefined
-    if (config) {
-      return config.channels
-    } else if (this.selectedChannel && this.channels[this.selectedChannel]) {
-      return [this.selectedChannel]
-    } else {
-      return Object.keys(this.channels)
-    }
+    return config
+      ? config.channels
+      : this.selectedChannel && this.channels[this.selectedChannel]
+        ? [this.selectedChannel]
+        : Object.keys(this.channels)
   }
 
   setPlaying(videoId: string) {
@@ -138,9 +135,7 @@ class Store {
   }
   setFilter(arg: string) {
     this.filterInput = arg
-    if (this.filterTimer) {
-      clearTimeout(this.filterTimer)
-    }
+    clearTimeout(this.filterTimer)
     this.filterTimer = setTimeout(() => {
       runInAction(() => {
         this.filter = arg
@@ -199,16 +194,14 @@ class Store {
   }
   async refreshChannel(channelName: string) {
     const url = this.channels[channelName]
-    if (!url) {
-      return
+    if (url) {
+      const item = getVideoId(url)
+      if (item) {
+        const key = getItemKey(item)
+        await localforage.removeItem(key)
+        this.videoMap.delete(key)
+      }
     }
-    const item = getVideoId(url)
-    if (!item) {
-      return
-    }
-    const key = getItemKey(item)
-    await localforage.removeItem(key)
-    this.videoMap.delete(key)
   }
 
   addChannel(name: string, url: string) {
@@ -250,13 +243,14 @@ class Store {
     return [...this.videoMap.values()].flat()
   }
   get list() {
-    if (!this.filter) {
-      return this.videoFlat
-    }
     const lc = this.filter.toLowerCase()
-    return this.videoFlat.filter(video =>
-      `${video.channel ?? ''} ${video.title ?? ''}`.toLowerCase().includes(lc),
-    )
+    return lc
+      ? this.videoFlat.filter(video =>
+          `${video.channel ?? ''} ${video.title ?? ''}`
+            .toLowerCase()
+            .includes(lc),
+        )
+      : this.videoFlat
   }
   private nextItem(direction: 1 | -1) {
     const items = this.list
@@ -319,11 +313,7 @@ class Store {
     }
   }
 
-  private init() {
-    subscribeToAuthChanges(user => {
-      void this.handleAuthChange(user)
-    })
-
+  private setupKeyboard() {
     document.addEventListener('keydown', event => {
       const t = event.target
       const inField = t instanceof Element && t.matches('input, textarea')
@@ -337,66 +327,74 @@ class Store {
         }
       }
     })
+  }
 
-    let controller = new AbortController()
-    autorun(async () => {
-      controller.abort()
-      controller = new AbortController()
-      const { signal } = controller
-      const playlistItems = this.playlistItems
-      const activeKeys = new Set(playlistItems.map(p => p.key))
-      this.channelProgress.clear()
-      for (const key of this.videoMap.keys()) {
-        if (!activeKeys.has(key)) {
-          this.videoMap.delete(key)
-        }
+  private async loadVideos(signal: AbortSignal) {
+    const playlistItems = this.playlistItems
+    const activeKeys = new Set(playlistItems.map(p => p.key))
+    this.channelProgress.clear()
+    for (const key of this.videoMap.keys()) {
+      if (!activeKeys.has(key)) {
+        this.videoMap.delete(key)
       }
-      runInAction(() => {
-        this.error = undefined
-      })
-      let fetchingChannel = ''
-      try {
-        for (const { name, item, key } of playlistItems) {
-          const alreadyLoaded = untracked(() => this.videoMap.has(key))
-          if (alreadyLoaded) {
-            continue
-          }
-          fetchingChannel = name
-          this.setChannelProgress(name, { current: 0, total: 0 })
-          const ctx = {
-            setProcessing: (progress: { current: number; total: number }) => {
-              this.setChannelProgress(name, progress)
-            },
-          }
-          const videos = await getCachedOrFetch(item, ctx, signal)
-          if (signal.aborted) {
-            return
-          }
-          this.videoMap.set(key, videos)
-          this.channelProgress.delete(name)
+    }
+    runInAction(() => {
+      this.error = undefined
+    })
+    let fetchingChannel = ''
+    try {
+      for (const { name, item, key } of playlistItems) {
+        const alreadyLoaded = untracked(() => this.videoMap.has(key))
+        if (alreadyLoaded) {
+          continue
         }
-      } catch (error) {
-        if (
-          signal.aborted ||
-          (error instanceof Error && error.name === 'AbortError')
-        ) {
+        fetchingChannel = name
+        this.setChannelProgress(name, { current: 0, total: 0 })
+        const ctx = {
+          setProcessing: (progress: { current: number; total: number }) => {
+            this.setChannelProgress(name, progress)
+          },
+        }
+        const videos = await getCachedOrFetch(item, ctx, signal)
+        if (signal.aborted) {
           return
         }
-        const msg = error instanceof Error ? error.message : `${error}`
-        const withContext = fetchingChannel
-          ? `"${fetchingChannel}": ${msg}`
-          : msg
-        console.error(withContext)
-        runInAction(() => {
-          this.error = withContext
-          this.channelProgress.clear()
-        })
+        this.videoMap.set(key, videos)
+        this.channelProgress.delete(name)
       }
+    } catch (error) {
+      if (
+        signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError')
+      ) {
+        return
+      }
+      const msg = error instanceof Error ? error.message : `${error}`
+      const withContext = fetchingChannel ? `"${fetchingChannel}": ${msg}` : msg
+      console.error(withContext)
+      runInAction(() => {
+        this.error = withContext
+        this.channelProgress.clear()
+      })
+    }
+  }
+
+  private init() {
+    subscribeToAuthChanges(user => {
+      void this.handleAuthChange(user)
+    })
+    this.setupKeyboard()
+
+    let controller = new AbortController()
+    autorun(() => {
+      controller.abort()
+      controller = new AbortController()
+      void this.loadVideos(controller.signal)
     })
 
     autorun(() => {
       const url = new URL(globalThis.location.href)
-      applyQueryToUrl(url, this.query, this.activePlaylistName ?? '')
+      applyQueryToUrl(url, this.query, this.activePlaylistName)
       globalThis.history.replaceState({}, '', url)
     })
 

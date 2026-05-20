@@ -60,14 +60,13 @@ export async function signOut() {
 
 export async function loadUserData(uid: string): Promise<UserDoc | null> {
   const snap = await getDoc(doc(db, 'users', uid))
-  if (!snap.exists()) {
-    return null
-  }
-  const raw = snap.data()
-  return {
-    channels: parseChannels(raw.channels),
-    playlists: parsePlaylists(raw.playlists),
-  }
+  const raw = snap.exists() ? snap.data() : null
+  return raw
+    ? {
+        channels: parseChannels(raw.channels),
+        playlists: parsePlaylists(raw.playlists),
+      }
+    : null
 }
 
 export async function saveUserData(uid: string, data: UserDoc) {

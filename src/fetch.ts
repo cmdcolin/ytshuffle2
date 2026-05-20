@@ -40,13 +40,19 @@ interface ProgressCtx {
 }
 
 export function getItemKey(item: QueryItem) {
-  if ('videoId' in item) {
-    return item.videoId
+  return 'videoId' in item
+    ? item.videoId
+    : 'playlistId' in item
+      ? item.playlistId
+      : item.handle
+}
+
+function contentsUrl(playlistId: string, nextPageToken?: string) {
+  const params = new URLSearchParams({ playlistId })
+  if (nextPageToken) {
+    params.set('nextPageToken', nextPageToken)
   }
-  if ('playlistId' in item) {
-    return item.playlistId
-  }
-  return item.handle
+  return `${getContentsLambdaEndpoint}?${params}`
 }
 
 async function fetchPlaylistById(
@@ -54,22 +60,17 @@ async function fetchPlaylistById(
   playlistId: string,
   signal: AbortSignal,
 ): Promise<Playlist> {
-  let nextPageToken = ''
+  let nextPageToken: string | undefined
   const items: Item[] = []
-  const url = `${getContentsLambdaEndpoint}?playlistId=${playlistId}`
   do {
     const res = await fetchJson<{
       items: PreItem[]
       nextPageToken?: string
       totalResults?: number
-    }>(url + (nextPageToken ? `&nextPageToken=${nextPageToken}` : ''), {
-      signal,
-    })
-    for (const item of remap(res.items)) {
-      items.push(item)
-    }
+    }>(contentsUrl(playlistId, nextPageToken), { signal })
+    items.push(...remap(res.items))
     ctx.setProcessing({ current: items.length, total: res.totalResults ?? 0 })
-    nextPageToken = res.nextPageToken ?? ''
+    nextPageToken = res.nextPageToken
   } while (nextPageToken)
   return items
 }

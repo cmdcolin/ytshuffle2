@@ -111,7 +111,11 @@ export function clamp(p: number, min: number, max: number) {
   return Math.max(min, Math.min(max, p))
 }
 
-export function applyQueryToUrl(url: URL, query: string, playlist: string) {
+export function applyQueryToUrl(
+  url: URL,
+  query: string,
+  playlist: string | null,
+) {
   const items = getIds(query)
   const setParam = (key: string, values: string[]) => {
     if (values.length > 0) {

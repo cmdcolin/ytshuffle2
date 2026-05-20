@@ -18,27 +18,23 @@ const options = {
 
 const YoutubePanel = observer(function ({ model }: { model: StoreModel }) {
   const { playing, autoplay } = model
-  return (
-    <>
-      {playing ? (
-        <Suspense fallback={<div className={styles.videoPlaceholder} />}>
-          <YouTube
-            videoId={playing}
-            opts={options}
-            className={styles.videoFrame}
-            onEnd={() => {
-              if (autoplay) {
-                model.goToNext()
-              }
-            }}
-          />
-        </Suspense>
-      ) : (
-        <div className={styles.videoPlaceholder}>
-          <p>Nothing playing</p>
-        </div>
-      )}
-    </>
+  return playing ? (
+    <Suspense fallback={<div className={styles.videoPlaceholder} />}>
+      <YouTube
+        videoId={playing}
+        opts={options}
+        className={styles.videoFrame}
+        onEnd={() => {
+          if (autoplay) {
+            model.goToNext()
+          }
+        }}
+      />
+    </Suspense>
+  ) : (
+    <div className={styles.videoPlaceholder}>
+      <p>Nothing playing</p>
+    </div>
   )
 })
 export default YoutubePanel

@@ -20,30 +20,24 @@ function compareItems(
   dir: SortDir,
   playCounts: ReadonlyMap<string, number>,
 ) {
-  let av: string | number
-  let bv: string | number
-  if (key === 'publishedAt') {
-    av = new Date(a.publishedAt).getTime()
-    bv = new Date(b.publishedAt).getTime()
-  } else if (key === 'plays') {
-    av = playCounts.get(a.videoId) ?? 0
-    bv = playCounts.get(b.videoId) ?? 0
-  } else {
-    av = a[key] ?? ''
-    bv = b[key] ?? ''
+  const getValue: Record<SortKey, (item: Item) => string | number> = {
+    publishedAt: item => new Date(item.publishedAt).getTime(),
+    plays: item => playCounts.get(item.videoId) ?? 0,
+    title: item => item.title ?? '',
+    channel: item => item.channel ?? '',
   }
+  const av = getValue[key](a)
+  const bv = getValue[key](b)
   const cmp = av < bv ? -1 : av > bv ? 1 : 0
   return dir === 'asc' ? cmp : -cmp
 }
 
 function SortIcon({ dir }: { dir: SortDir | undefined }) {
-  if (dir === 'asc') {
-    return <FaChevronUp />
-  } else if (dir === 'desc') {
-    return <FaChevronDown />
-  } else {
-    return <FaChevronDown className={styles.sortIconInactive} />
-  }
+  return dir === 'asc' ? (
+    <FaChevronUp />
+  ) : (
+    <FaChevronDown className={dir ? undefined : styles.sortIconInactive} />
+  )
 }
 
 const LibraryTable = observer(function ({ model }: { model: StoreModel }) {
