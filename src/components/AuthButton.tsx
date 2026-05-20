@@ -14,28 +14,39 @@ export default observer(function AuthButton({ model }: { model: StoreModel }) {
 
   if (!uid) {
     return (
-      <button
-        onClick={() => {
-          signInWithGoogle().catch((error: unknown) => {
-            console.error('signInWithGoogle failed', error)
-          })
-        }}
+      <div className={styles.authGroup}>
+        <span className={styles.modeBadge} title="Library is saved on this device only">
+          Local
+        </span>
+        <button
+          onClick={() => {
+            signInWithGoogle().catch((error: unknown) => {
+              console.error('signInWithGoogle failed', error)
+            })
+          }}
+        >
+          Sign in to sync
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.authGroup}>
+      <span
+        className={`${styles.modeBadge} ${styles.modeBadgeSynced}`}
+        title={`Library synced to cloud${displayName ? ` as ${displayName}` : ''}`}
       >
-        Sign in
-      </button>
-    )
-  }
-
-  if (photoURL) {
-    return (
-      <img
-        src={photoURL}
-        alt={displayName ?? ''}
-        title={displayName ?? ''}
-        className={styles.authAvatar}
-      />
-    )
-  }
-
-  return null
+        Synced
+      </span>
+      {photoURL ? (
+        <img
+          src={photoURL}
+          alt={displayName ?? ''}
+          title={displayName ?? ''}
+          className={styles.authAvatar}
+        />
+      ) : null}
+    </div>
+  )
 })

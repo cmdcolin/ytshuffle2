@@ -7,7 +7,6 @@ import {
 } from 'firebase/auth'
 import {
   type DocumentData,
-  type QueryDocumentSnapshot,
   doc,
   getDoc,
   getFirestore,
@@ -39,33 +38,12 @@ interface UserDoc {
   channels: Record<string, string>
 }
 
-const userConverter = {
-  toFirestore(data: UserDoc): DocumentData {
-    return data
-  },
-  fromFirestore(snap: QueryDocumentSnapshot): UserDoc {
-    const raw = snap.data()
-    return {
-      channels: parseChannels(raw.channels),
-      playlists: parsePlaylists(raw.playlists),
-    }
-  },
-}
-
 function parseNumberRecord(raw: DocumentData): Record<string, number> {
   return Object.fromEntries(
     Object.entries(raw).filter(
       (e): e is [string, number] => typeof e[1] === 'number',
     ),
   )
-}
-
-function userDoc(uid: string) {
-  return doc(db, 'users', uid).withConverter(userConverter)
-}
-
-function playCountsDoc(uid: string) {
-  return doc(db, 'userPlayCounts', uid)
 }
 
 export function subscribeToAuthChanges(callback: (user: User | null) => void) {
@@ -80,22 +58,33 @@ export async function signOut() {
   await auth.signOut()
 }
 
-export async function loadUserData(uid: string) {
-  const snap = await getDoc(userDoc(uid))
-  return snap.exists() ? snap.data() : null
+export async function loadUserData(uid: string): Promise<UserDoc | null> {
+  const snap = await getDoc(doc(db, 'users', uid))
+  if (!snap.exists()) {
+    return null
+  }
+  const raw = snap.data()
+  return {
+    channels: parseChannels(raw.channels),
+    playlists: parsePlaylists(raw.playlists),
+  }
 }
 
 export async function saveUserData(uid: string, data: UserDoc) {
-  await setDoc(userDoc(uid), data)
+  await setDoc(doc(db, 'users', uid), data)
 }
 
 export async function loadPlayCounts(
   uid: string,
 ): Promise<Record<string, number>> {
-  const snap = await getDoc(playCountsDoc(uid))
+  const snap = await getDoc(doc(db, 'userPlayCounts', uid))
   return snap.exists() ? parseNumberRecord(snap.data()) : {}
 }
 
 export async function incrementPlayCount(uid: string, videoId: string) {
-  await setDoc(playCountsDoc(uid), { [videoId]: increment(1) }, { merge: true })
+  await setDoc(
+    doc(db, 'userPlayCounts', uid),
+    { [videoId]: increment(1) },
+    { merge: true },
+  )
 }

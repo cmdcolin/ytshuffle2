@@ -5,19 +5,14 @@ import { getItemKey } from '../fetch'
 import { getVideoId } from '../util'
 import styles from './AddChannelDialog.module.css'
 
-function deriveName(url: string) {
-  const parsed = getVideoId(url.trim())
-  return parsed ? getItemKey(parsed) : undefined
-}
-
 function parseLines(text: string) {
   return text
     .split('\n')
     .map(line => line.trim())
     .filter(Boolean)
     .flatMap(url => {
-      const name = deriveName(url)
-      return name ? [{ name, url }] : []
+      const parsed = getVideoId(url)
+      return parsed ? [{ name: getItemKey(parsed), url }] : []
     })
 }
 

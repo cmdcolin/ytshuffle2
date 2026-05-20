@@ -30,35 +30,36 @@ function ChannelProgress({
   )
 }
 
-function SidebarSection({
-  title,
-  onNew,
-  items,
-  renderItem,
+function SidebarItem({
+  name,
+  active,
+  onSelect,
+  actions,
+  footer,
 }: {
-  title: string
-  onNew: () => void
-  items: string[]
-  renderItem: (name: string) => React.ReactNode
+  name: string
+  active: boolean
+  onSelect: () => void
+  actions: React.ReactNode
+  footer?: React.ReactNode
 }) {
   return (
     <>
-      <div className={styles.sidebarHeader}>
-        <span className={styles.sidebarTitle}>{title}</span>
+      <div
+        className={`${styles.item}${active ? ` ${styles.itemActive}` : ''}`}
+      >
         <button
-          className={styles.sidebarNewInline}
-          onClick={onNew}
-          title={`Add ${title}`}
+          className={styles.itemName}
+          onClick={() => {
+            onSelect()
+          }}
+          title={name}
         >
-          +
+          {name}
         </button>
+        <div className={styles.itemActions}>{actions}</div>
       </div>
-      <div>
-        {items.map(name => (
-          <div key={name}>{renderItem(name)}</div>
-        ))}
-      </div>
-      <div className={styles.sectionDivider} />
+      {footer}
     </>
   )
 }
@@ -100,95 +101,6 @@ const Sidebar = observer(function ({
     setShowAddChannel(false)
   }
 
-  const renderChannelItem = (name: string) => {
-    const progress = model.channelProgress.get(name)
-    const isActive = name === model.selectedChannel
-    return (
-      <>
-        <div
-          className={`${styles.item}${isActive ? ` ${styles.itemActive}` : ''}`}
-        >
-          <button
-            className={styles.itemName}
-            onClick={() => {
-              model.setSelectedChannel(name)
-              onClose()
-            }}
-            title={name}
-          >
-            {name}
-          </button>
-          <div className={styles.itemActions}>
-            <button
-              className={styles.itemAction}
-              onClick={() => {
-                model.refreshChannel(name).catch((error: unknown) => {
-                  console.error('refreshChannel failed', error)
-                  model.setError(`Failed to refresh "${name}".`)
-                })
-              }}
-              title="Refresh"
-            >
-              ↻
-            </button>
-            <button
-              className={styles.itemAction}
-              onClick={() => {
-                model.removeChannel(name)
-              }}
-              title="Remove"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-        {progress && (
-          <ChannelProgress current={progress.current} total={progress.total} />
-        )}
-      </>
-    )
-  }
-
-  const renderPlaylistItem = (name: string) => (
-    <div
-      className={`${styles.item}${name === activePlaylistName ? ` ${styles.itemActive}` : ''}`}
-    >
-      <button
-        className={styles.itemName}
-        onClick={() => {
-          model.setPlaylist(name)
-          onClose()
-        }}
-        title={name}
-      >
-        {name}
-      </button>
-      <div className={styles.itemActions}>
-        <button
-          className={styles.itemAction}
-          onClick={() => {
-            const config = playlists[name]
-            if (config) {
-              setEditModal({ originalName: name, channels: config.channels })
-            }
-          }}
-          title="Edit"
-        >
-          ✎
-        </button>
-        <button
-          className={styles.itemAction}
-          onClick={() => {
-            model.deletePlaylist(name)
-          }}
-          title="Delete"
-        >
-          ✕
-        </button>
-      </div>
-    </div>
-  )
-
   return (
     <div className={`${styles.sidebar}${open ? ` ${styles.sidebarOpen}` : ''}`}>
       <div className={styles.sidebarHeader}>
@@ -215,22 +127,114 @@ const Sidebar = observer(function ({
         </div>
       </div>
       <div>
-        {channelNames.map(name => (
-          <div key={name}>{renderChannelItem(name)}</div>
-        ))}
+        {channelNames.map(name => {
+          const progress = model.channelProgress.get(name)
+          return (
+            <div key={name}>
+              <SidebarItem
+                name={name}
+                active={name === model.selectedChannel}
+                onSelect={() => {
+                  model.setSelectedChannel(name)
+                  onClose()
+                }}
+                actions={
+                  <>
+                    <button
+                      className={styles.itemAction}
+                      onClick={() => {
+                        model.refreshChannel(name).catch((error: unknown) => {
+                          console.error('refreshChannel failed', error)
+                          model.setError(`Failed to refresh "${name}".`)
+                        })
+                      }}
+                      title="Refresh"
+                    >
+                      ↻
+                    </button>
+                    <button
+                      className={styles.itemAction}
+                      onClick={() => {
+                        model.removeChannel(name)
+                      }}
+                      title="Remove"
+                    >
+                      ✕
+                    </button>
+                  </>
+                }
+                footer={
+                  progress ? (
+                    <ChannelProgress
+                      current={progress.current}
+                      total={progress.total}
+                    />
+                  ) : null
+                }
+              />
+            </div>
+          )
+        })}
       </div>
       <div className={styles.sectionDivider} />
 
       {model.uid && (
         <>
-          <SidebarSection
-            title="Playlists"
-            onNew={() => {
-              setEditModal({ originalName: '', channels: [] })
-            }}
-            items={Object.keys(playlists)}
-            renderItem={renderPlaylistItem}
-          />
+          <div className={styles.sidebarHeader}>
+            <span className={styles.sidebarTitle}>Playlists</span>
+            <button
+              className={styles.sidebarNewInline}
+              onClick={() => {
+                setEditModal({ originalName: '', channels: [] })
+              }}
+              title="Add Playlists"
+            >
+              +
+            </button>
+          </div>
+          <div>
+            {Object.keys(playlists).map(name => (
+              <div key={name}>
+                <SidebarItem
+                  name={name}
+                  active={name === activePlaylistName}
+                  onSelect={() => {
+                    model.setPlaylist(name)
+                    onClose()
+                  }}
+                  actions={
+                    <>
+                      <button
+                        className={styles.itemAction}
+                        onClick={() => {
+                          const config = playlists[name]
+                          if (config) {
+                            setEditModal({
+                              originalName: name,
+                              channels: config.channels,
+                            })
+                          }
+                        }}
+                        title="Edit"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className={styles.itemAction}
+                        onClick={() => {
+                          model.deletePlaylist(name)
+                        }}
+                        title="Delete"
+                      >
+                        ✕
+                      </button>
+                    </>
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <div className={styles.sectionDivider} />
 
           {editModal === null ? null : (
             <EditPlaylistDialog
