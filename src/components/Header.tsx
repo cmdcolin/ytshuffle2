@@ -25,6 +25,14 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false)
   const [openDialog, setOpenDialog] = useState<DialogType>(null)
 
+  const openDialogFromMenu = (dialog: DialogType) => {
+    setOpenDialog(dialog)
+    setMenuOpen(false)
+  }
+  const closeDialog = () => {
+    setOpenDialog(null)
+  }
+
   return (
     <div className={styles.header}>
       <img src={logo} className={styles.headerLogo} />
@@ -58,24 +66,21 @@ export default function Header({
               <div className={styles.dropdown}>
                 <button
                   onClick={() => {
-                    setOpenDialog('settings')
-                    setMenuOpen(false)
+                    openDialogFromMenu('settings')
                   }}
                 >
                   Settings
                 </button>
                 <button
                   onClick={() => {
-                    setOpenDialog('about')
-                    setMenuOpen(false)
+                    openDialogFromMenu('about')
                   }}
                 >
                   About
                 </button>
                 <button
                   onClick={() => {
-                    setOpenDialog('policy')
-                    setMenuOpen(false)
+                    openDialogFromMenu('policy')
                   }}
                 >
                   Privacy policy
@@ -115,27 +120,10 @@ export default function Header({
         </div>
       </div>
       {openDialog === 'settings' && (
-        <SettingsDialog
-          model={model}
-          onClose={() => {
-            setOpenDialog(null)
-          }}
-        />
+        <SettingsDialog model={model} onClose={closeDialog} />
       )}
-      {openDialog === 'policy' && (
-        <ConfirmDialog
-          onClose={() => {
-            setOpenDialog(null)
-          }}
-        />
-      )}
-      {openDialog === 'about' && (
-        <AboutDialog
-          onClose={() => {
-            setOpenDialog(null)
-          }}
-        />
-      )}
+      {openDialog === 'policy' && <ConfirmDialog onClose={closeDialog} />}
+      {openDialog === 'about' && <AboutDialog onClose={closeDialog} />}
     </div>
   )
 }

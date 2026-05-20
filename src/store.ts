@@ -19,6 +19,15 @@ import { applyQueryToUrl, clamp, getVideoId, parseChannels } from './util'
 
 import type { Playlist, PlaylistConfig } from './util'
 
+function omit<V>(obj: Record<string, V>, key: string): Record<string, V> {
+  const { [key]: _, ...rest } = obj
+  return rest
+}
+
+function loadLocalChannels(): Record<string, string> {
+  return parseChannels(JSON.parse(localStorage.getItem('channels') ?? '{}'))
+}
+
 function channelsFromUrl(): Record<string, string> {
   const params = new URLSearchParams(globalThis.location.search)
   const sources = [
@@ -61,9 +70,7 @@ class Store {
 
   constructor({ playlist }: { playlist: string }) {
     this.initialPlaylist = playlist
-    const stored = parseChannels(
-      JSON.parse(localStorage.getItem('channels') ?? '{}'),
-    )
+    const stored = loadLocalChannels()
     const fromUrl = channelsFromUrl()
     const addedFromUrl = Object.keys(fromUrl).some(name => !stored[name])
     this.channels = { ...fromUrl, ...stored }
@@ -210,8 +217,7 @@ class Store {
   }
 
   removeChannel(name: string) {
-    const { [name]: _removed, ...rest } = this.channels
-    this.channels = rest
+    this.channels = omit(this.channels, name)
     this.playlists = Object.fromEntries(
       Object.entries(this.playlists).map(([pName, config]) => [
         pName,
@@ -222,8 +228,10 @@ class Store {
   }
 
   savePlaylist(originalName: string, newName: string, channelNames: string[]) {
-    const { [originalName]: _old, ...rest } = this.playlists
-    this.playlists = { ...rest, [newName]: { channels: channelNames } }
+    this.playlists = {
+      ...omit(this.playlists, originalName),
+      [newName]: { channels: channelNames },
+    }
     if (originalName === '' || originalName === this.activePlaylistName) {
       this.activePlaylistName = newName
     }
@@ -231,10 +239,9 @@ class Store {
   }
 
   deletePlaylist(name: string) {
-    const { [name]: _removed, ...rest } = this.playlists
-    this.playlists = rest
+    this.playlists = omit(this.playlists, name)
     if (name === this.activePlaylistName) {
-      this.activePlaylistName = Object.keys(rest)[0] ?? null
+      this.activePlaylistName = Object.keys(this.playlists)[0] ?? null
     }
     void this.persist()
   }
@@ -251,27 +258,24 @@ class Store {
       `${video.channel ?? ''} ${video.title ?? ''}`.toLowerCase().includes(lc),
     )
   }
-  index(r: number) {
-    const p = this.list
-    return p[
-      this.shuffle
-        ? Math.floor(Math.random() * p.length)
-        : clamp(
-            p.findIndex(v => this.playing === v.videoId) + r,
-            0,
-            p.length - 1,
-          )
-    ]
+  private nextItem(direction: 1 | -1) {
+    const items = this.list
+    if (this.shuffle) {
+      return items[Math.floor(Math.random() * items.length)]
+    } else {
+      const current = items.findIndex(v => v.videoId === this.playing)
+      return items[clamp(current + direction, 0, items.length - 1)]
+    }
   }
 
   goToNext() {
-    const item = this.index(1)
+    const item = this.nextItem(1)
     if (item) {
       this.setPlaying(item.videoId)
     }
   }
   goToPrev() {
-    const item = this.index(-1)
+    const item = this.nextItem(-1)
     if (item) {
       this.setPlaying(item.videoId)
     }
@@ -311,7 +315,7 @@ class Store {
       this.playCounts.clear()
       this.playlists = {}
       this.activePlaylistName = null
-      void this.persist()
+      this.channels = loadLocalChannels()
     }
   }
 

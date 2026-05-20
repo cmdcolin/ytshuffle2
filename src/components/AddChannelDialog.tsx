@@ -23,12 +23,8 @@ export default function AddChannelDialog({
 }) {
   const [text, setText] = useState('')
 
-  const handleClose = () => {
-    onClose()
-  }
-
   return (
-    <BaseDialog onClose={handleClose}>
+    <BaseDialog onClose={onClose}>
       <form
         onSubmit={event => {
           event.preventDefault()
@@ -69,7 +65,7 @@ export default function AddChannelDialog({
           <button
             type="button"
             onClick={() => {
-              handleClose()
+              onClose()
             }}
           >
             Cancel
