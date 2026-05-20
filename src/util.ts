@@ -57,39 +57,54 @@ export interface PlaylistConfig {
   channels: string[]
 }
 
-export function parseChannels(raw: unknown): Record<string, string> {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return {}
-  }
-  return Object.fromEntries(
-    Object.entries(raw).filter(
-      (e): e is [string, string] => typeof e[1] === 'string',
-    ),
+function isPlainObject(raw: unknown): raw is Record<string, unknown> {
+  return !!raw && typeof raw === 'object' && !Array.isArray(raw)
+}
+
+function isStringArray(val: unknown): val is string[] {
+  return (
+    Array.isArray(val) && val.every((item: unknown) => typeof item === 'string')
   )
 }
 
-export function parsePlaylists(raw: unknown): Record<string, PlaylistConfig> {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+function asPlaylistConfig(val: unknown): PlaylistConfig | undefined {
+  if (isStringArray(val)) {
+    return { channels: val }
+  }
+  if (isPlainObject(val)) {
+    const { channels } = val
+    if (isStringArray(channels)) {
+      return { channels }
+    }
+  }
+  return undefined
+}
+
+export function parseChannels(raw: unknown): Record<string, string> {
+  if (!isPlainObject(raw)) {
     return {}
   }
-  return Object.fromEntries(
-    Object.entries(raw).flatMap(([key, val]): [string, PlaylistConfig][] => {
-      if (Array.isArray(val) && val.every(item => typeof item === 'string')) {
-        return [[key, { channels: val }]]
-      }
-      if (
-        val &&
-        typeof val === 'object' &&
-        !Array.isArray(val) &&
-        'channels' in val &&
-        Array.isArray(val.channels) &&
-        val.channels.every((item: unknown) => typeof item === 'string')
-      ) {
-        return [[key, { channels: val.channels }]]
-      }
-      return []
-    }),
-  )
+  const result: Record<string, string> = {}
+  for (const [key, val] of Object.entries(raw)) {
+    if (typeof val === 'string') {
+      result[key] = val
+    }
+  }
+  return result
+}
+
+export function parsePlaylists(raw: unknown): Record<string, PlaylistConfig> {
+  if (!isPlainObject(raw)) {
+    return {}
+  }
+  const result: Record<string, PlaylistConfig> = {}
+  for (const [key, val] of Object.entries(raw)) {
+    const config = asPlaylistConfig(val)
+    if (config) {
+      result[key] = config
+    }
+  }
+  return result
 }
 
 export function clamp(p: number, min: number, max: number) {
@@ -123,4 +138,3 @@ export function applyQueryToUrl(url: URL, query: string, playlist: string) {
     url.searchParams.delete('playlist')
   }
 }
-

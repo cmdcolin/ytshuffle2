@@ -15,7 +15,10 @@ export default observer(function AuthButton({ model }: { model: StoreModel }) {
   if (!uid) {
     return (
       <div className={styles.authGroup}>
-        <span className={styles.modeBadge} title="Library is saved on this device only">
+        <span
+          className={styles.modeBadge}
+          title="Library is saved on this device only"
+        >
           Local
         </span>
         <button

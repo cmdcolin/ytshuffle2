@@ -45,9 +45,7 @@ function SidebarItem({
 }) {
   return (
     <>
-      <div
-        className={`${styles.item}${active ? ` ${styles.itemActive}` : ''}`}
-      >
+      <div className={`${styles.item}${active ? ` ${styles.itemActive}` : ''}`}>
         <button
           className={styles.itemName}
           onClick={() => {

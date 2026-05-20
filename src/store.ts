@@ -1,5 +1,11 @@
 import localforage from 'localforage'
-import { autorun, makeAutoObservable, observable, runInAction, untracked } from 'mobx'
+import {
+  autorun,
+  makeAutoObservable,
+  observable,
+  runInAction,
+  untracked,
+} from 'mobx'
 
 import { getCachedOrFetch, getItemKey } from './fetch'
 import {
