@@ -186,12 +186,19 @@ class Store {
     channels: Record<string, string>
     playlists: Record<string, PlaylistConfig>
   }) {
-    this.channels = cloudData.channels
+    const fromUrl = channelsFromUrl()
+    const addedFromUrl = Object.keys(fromUrl).some(
+      name => !cloudData.channels[name],
+    )
+    this.channels = { ...fromUrl, ...cloudData.channels }
     this.playlists = cloudData.playlists
     const firstKey = Object.keys(cloudData.playlists)[0]
     this.activePlaylistName = cloudData.playlists[this.initialPlaylist]
       ? this.initialPlaylist
       : (firstKey ?? null)
+    if (addedFromUrl) {
+      void this.persist()
+    }
   }
 
   private async persist() {
@@ -341,6 +348,24 @@ class Store {
         void this.handleAuthChange(user)
       }),
     )
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const t = event.target
+      const inField = t instanceof Element && t.matches('input, textarea')
+      if (!inField) {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          this.goToPrev()
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          this.goToNext()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    this.disposers.push(() => {
+      document.removeEventListener('keydown', onKeyDown)
+    })
 
     let controller = new AbortController()
     this.disposers.push(

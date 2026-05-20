@@ -10,7 +10,7 @@ const YouTube = lazy(() => import('react-youtube'))
 
 const options = {
   width: '100%',
-  height: 225,
+  height: '100%',
   playerVars: {
     autoplay: 1 as const,
   },
@@ -25,6 +25,7 @@ const YoutubePanel = observer(function ({ model }: { model: StoreModel }) {
           <YouTube
             videoId={playing}
             opts={options}
+            className={styles.videoFrame}
             onEnd={() => {
               if (autoplay) {
                 model.goToNext()
