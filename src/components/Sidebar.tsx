@@ -8,8 +8,6 @@ import styles from './Sidebar.module.css'
 
 import type { StoreModel } from '../store'
 
-type EditModal = { originalName: string; channels: string[] } | null
-
 function ChannelProgress({
   current,
   total,
@@ -71,32 +69,12 @@ const Sidebar = observer(function ({
   open: boolean
   onClose: () => void
 }) {
-  const [editModal, setEditModal] = useState<EditModal>(null)
-  const [showAddChannel, setShowAddChannel] = useState(false)
+  const [dialog, setDialog] = useState<React.ReactNode>(null)
   const { playlists, channels, activePlaylistName } = model
   const channelNames = Object.keys(channels)
 
-  const handleSavePlaylist = (result?: {
-    name: string
-    channels: string[]
-  }) => {
-    if (result) {
-      model.savePlaylist(
-        editModal?.originalName ?? '',
-        result.name,
-        result.channels,
-      )
-    }
-    setEditModal(null)
-  }
-
-  const handleAddChannel = (results?: { name: string; url: string }[]) => {
-    if (results) {
-      for (const { name, url } of results) {
-        model.addChannel(name, url)
-      }
-    }
-    setShowAddChannel(false)
+  const closeDialog = () => {
+    setDialog(null)
   }
 
   return (
@@ -107,7 +85,18 @@ const Sidebar = observer(function ({
           <button
             className={styles.sidebarNewInline}
             onClick={() => {
-              setShowAddChannel(true)
+              setDialog(
+                <AddChannelDialog
+                  onClose={results => {
+                    if (results) {
+                      for (const { name, url } of results) {
+                        model.addChannel(name, url)
+                      }
+                    }
+                    closeDialog()
+                  }}
+                />,
+              )
             }}
             title="Add channel"
           >
@@ -183,7 +172,19 @@ const Sidebar = observer(function ({
             <button
               className={styles.sidebarNewInline}
               onClick={() => {
-                setEditModal({ originalName: '', channels: [] })
+                setDialog(
+                  <EditPlaylistDialog
+                    initialName=""
+                    initialChannels={[]}
+                    availableChannels={channelNames}
+                    onClose={result => {
+                      if (result) {
+                        model.savePlaylist('', result.name, result.channels)
+                      }
+                      closeDialog()
+                    }}
+                  />,
+                )
               }}
               title="Add Playlists"
             >
@@ -207,10 +208,23 @@ const Sidebar = observer(function ({
                         onClick={() => {
                           const config = playlists[name]
                           if (config) {
-                            setEditModal({
-                              originalName: name,
-                              channels: config.channels,
-                            })
+                            setDialog(
+                              <EditPlaylistDialog
+                                initialName={name}
+                                initialChannels={config.channels}
+                                availableChannels={channelNames}
+                                onClose={result => {
+                                  if (result) {
+                                    model.savePlaylist(
+                                      name,
+                                      result.name,
+                                      result.channels,
+                                    )
+                                  }
+                                  closeDialog()
+                                }}
+                              />,
+                            )
                           }
                         }}
                         title="Edit"
@@ -233,27 +247,10 @@ const Sidebar = observer(function ({
             ))}
           </div>
           <div className={styles.sectionDivider} />
-
-          {editModal === null ? null : (
-            <EditPlaylistDialog
-              initialName={editModal.originalName}
-              initialChannels={editModal.channels}
-              availableChannels={channelNames}
-              onClose={result => {
-                handleSavePlaylist(result)
-              }}
-            />
-          )}
         </>
       )}
 
-      {showAddChannel ? (
-        <AddChannelDialog
-          onClose={results => {
-            handleAddChannel(results)
-          }}
-        />
-      ) : null}
+      {dialog}
     </div>
   )
 })

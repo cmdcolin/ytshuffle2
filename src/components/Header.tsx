@@ -13,8 +13,6 @@ import SettingsDialog from './SettingsDialog'
 
 import type { StoreModel } from '../store'
 
-type DialogType = 'settings' | 'policy' | 'about' | null
-
 export default function Header({
   model,
   onSidebarOpen,
@@ -23,14 +21,10 @@ export default function Header({
   onSidebarOpen: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [openDialog, setOpenDialog] = useState<DialogType>(null)
+  const [dialog, setDialog] = useState<React.ReactNode>(null)
 
-  const openDialogFromMenu = (dialog: DialogType) => {
-    setOpenDialog(dialog)
-    setMenuOpen(false)
-  }
   const closeDialog = () => {
-    setOpenDialog(null)
+    setDialog(null)
   }
 
   return (
@@ -66,21 +60,24 @@ export default function Header({
               <div className={styles.dropdown}>
                 <button
                   onClick={() => {
-                    openDialogFromMenu('settings')
+                    setDialog(<SettingsDialog model={model} onClose={closeDialog} />)
+                    setMenuOpen(false)
                   }}
                 >
                   Settings
                 </button>
                 <button
                   onClick={() => {
-                    openDialogFromMenu('about')
+                    setDialog(<AboutDialog onClose={closeDialog} />)
+                    setMenuOpen(false)
                   }}
                 >
                   About
                 </button>
                 <button
                   onClick={() => {
-                    openDialogFromMenu('policy')
+                    setDialog(<ConfirmDialog onClose={closeDialog} />)
+                    setMenuOpen(false)
                   }}
                 >
                   Privacy policy
@@ -119,11 +116,7 @@ export default function Header({
           ) : null}
         </div>
       </div>
-      {openDialog === 'settings' && (
-        <SettingsDialog model={model} onClose={closeDialog} />
-      )}
-      {openDialog === 'policy' && <ConfirmDialog onClose={closeDialog} />}
-      {openDialog === 'about' && <AboutDialog onClose={closeDialog} />}
+      {dialog}
     </div>
   )
 }
